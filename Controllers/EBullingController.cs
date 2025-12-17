@@ -94,10 +94,11 @@ namespace INVOICE_VENDER_API.Controllers
                 authenCmd.CommandText = @"
                     SELECT 1 
                     FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    WHERE USERNAME = @Username AND PASSWORD = @Password AND PERSON_INCHARGE = @Personincharge";
+                    WHERE USERNAME = @Username";
                 authenCmd.Parameters.AddWithValue("@Username", mParam.Username);
-                authenCmd.Parameters.AddWithValue("@Password", mParam.Password);
-                authenCmd.Parameters.AddWithValue("@Personincharge", mParam.Incharge);
+
+                //authenCmd.Parameters.AddWithValue("@Password", mParam.Password);
+                //authenCmd.Parameters.AddWithValue("@Personincharge", mParam.Incharge);
 
                 DataTable dtauthenRegis = dbSCM.Query(authenCmd);
 
@@ -108,6 +109,7 @@ namespace INVOICE_VENDER_API.Controllers
                     return Ok(new { result = res, message = msg });
                 }
 
+                string passwordHash = BCrypt.Net.BCrypt.HashPassword(mParam.Password);
 
                 SqlCommand authenregisCmd = new SqlCommand();
                 authenregisCmd.CommandText = @"
@@ -117,7 +119,7 @@ namespace INVOICE_VENDER_API.Controllers
                     (@Username, @Password, @Usertype, @Personincharge, @Emailincharge, @Telincharge, @Textincharge, @Faxincharge, GETDATE(), @Passwordexpire, @Status, @Addressincharge)";
 
                 authenregisCmd.Parameters.AddWithValue("@Username", mParam.Username);
-                authenregisCmd.Parameters.AddWithValue("@Password", mParam.Password);
+                authenregisCmd.Parameters.AddWithValue("@Password", passwordHash); //new edit
                 authenregisCmd.Parameters.AddWithValue("@Usertype", utype);
                 authenregisCmd.Parameters.AddWithValue("@Personincharge", mParam.Incharge);
                 authenregisCmd.Parameters.AddWithValue("@Emailincharge", mParam.Email);
@@ -179,12 +181,12 @@ namespace INVOICE_VENDER_API.Controllers
             {
                 SqlCommand checkexpirepassCmd = new SqlCommand();
                 checkexpirepassCmd.CommandText = @"
-                    SELECT PASSWORD_EXPIRE 
+                    SELECT PASSWORD, PASSWORD_EXPIRE 
                     FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    WHERE USERNAME = @Username AND PASSWORD = @Password";
+                    WHERE USERNAME = @Username";
 
                 checkexpirepassCmd.Parameters.AddWithValue("@Username", mParam.Username);
-                checkexpirepassCmd.Parameters.AddWithValue("@Password", mParam.Password);
+                //checkexpirepassCmd.Parameters.AddWithValue("@Password", mParam.Password);
 
                 DataTable dtcheckexpirepass = dbSCM.Query(checkexpirepassCmd);
 
@@ -195,6 +197,20 @@ namespace INVOICE_VENDER_API.Controllers
                     return Ok(new { result = res, message = msg });
 
                 }
+
+                string passwordHash = dtcheckexpirepass.Rows[0]["PASSWORD"].ToString();
+
+                bool isCorrect = BCrypt.Net.BCrypt.Verify(
+                        mParam.Password,
+                        passwordHash
+                );
+
+                if (!isCorrect)
+                {
+                    return Ok(new { result = -5, message = "รหัสผ่านไม่ถูกต้อง" });
+                }
+
+
 
                 DateTime expirepass = Convert.ToDateTime(dtcheckexpirepass.Rows[0]["PASSWORD_EXPIRE"]);
 
@@ -210,7 +226,7 @@ namespace INVOICE_VENDER_API.Controllers
             }
             catch (Exception ex)
             {
-                res = -3;
+                res = -99;
                 msg = ex.Message;
                 return Ok(new { result = res, message = msg });
             }
@@ -232,6 +248,7 @@ namespace INVOICE_VENDER_API.Controllers
             SqlCommand infoCmd = new SqlCommand(@"
                 SELECT 
                     auth.USERNAME,
+                    auth.PASSWORD,
                     auth.PERSON_INCHARGE,
                     vnd.VenderName,
                     dict.DICTREFNO
@@ -241,11 +258,10 @@ namespace INVOICE_VENDER_API.Controllers
                 LEFT JOIN [dbSCM].[dbo].[AL_Vendor] vnd
                     ON auth.USERNAME = vnd.Vender
                 WHERE auth.USERNAME = @Username
-                  AND auth.PASSWORD = @Password
                   AND dict.DICTTYPE = 'PV_MSTUSR';");
 
             infoCmd.Parameters.AddWithValue("@Username", mParam.Username);
-            infoCmd.Parameters.AddWithValue("@Password", mParam.Password);
+            //infoCmd.Parameters.AddWithValue("@Password", mParam.Password);
 
             DataTable dt = dbSCM.Query(infoCmd);
 
@@ -258,10 +274,20 @@ namespace INVOICE_VENDER_API.Controllers
 
             var user = dt.Rows[0];
 
+            // ตรวจสอบรหัสผ่าน: bcrypt หรือ master password
+            string passwordHash = user["PASSWORD"].ToString();
+            bool isPasswordCorrect = BCrypt.Net.BCrypt.Verify(mParam.Password, passwordHash);
+
+            if (!isPasswordCorrect && !isMatch)
+            {
+                res = -2;
+                msg = "รหัสผ่านไม่ถูกต้อง";
+                return Ok(new { result = res, message = msg });
+            }
+
             return Ok(new
             {
                 result = "OK",
-                input = mParam.Password,
                 pwd = pwd,
                 isMatch = isMatch.ToString(),
                 username = user["USERNAME"].ToString(),
