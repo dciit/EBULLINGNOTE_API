@@ -324,19 +324,22 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     OracleCommand cmdVDNAME = new OracleCommand();
-                    cmdVDNAME.CommandText = @"SELECT VDNAME, 
-                                                    ADDR1 || ' ' || ADDR2 || ' ' || ZIPCODE || ' Tel ' || TELNO || ' Fax ' || FAXNO AS ADDR
-                                                    FROM DST_ACMVD1
-                                                    WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
+                    cmdVDNAME.CommandText = @"SELECT *
+                                                FROM DST_ACMVD1
+                                                WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
                     cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
                     DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
                     if (dtVDNAME.Rows.Count > 0)
                     {
                         MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
-                        MData.ADDRESS = dtVDNAME.Rows[0]["ADDR"].ToString();
+                        MData.ADDRES1 = dtVDNAME.Rows[0]["ADDR1"].ToString();
+                        MData.ADDRES2 = dtVDNAME.Rows[0]["ADDR2"].ToString();
+                        MData.ZIPCODE = dtVDNAME.Rows[0]["ZIPCODE"].ToString();
+                        MData.TELNO = dtVDNAME.Rows[0]["TELNO"].ToString();
+                        MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
                     }
 
-                 
+
                     SqlCommand cmdTotal = new SqlCommand();
                     cmdTotal.CommandText = @"SELECT VENDORCODE,
                                                 SUM(TOTAL_AMOUNT) AS TOTAL_AMOUNT,
@@ -466,45 +469,6 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
         [HttpPost]
-        [Route("PostRejectbilling")]
-        public IActionResult PostRejectbilling([FromBody] MReceiveBuilling obj)
-        {
-
-            SqlCommand selectDoc = new SqlCommand();
-            selectDoc.CommandText = $@"SELECT *
-                                            FROM [dbSCM].[dbo].[EBULLING_DETAIL]
-                                            WHERE INVOICENO IN {obj.InvoiceNo}";
-            DataTable dtDoc = oConSCM.Query(selectDoc);
-            if (dtDoc.Rows.Count > 0)
-            {
-                foreach (DataRow item in dtDoc.Rows)
-                {
-                    string docNo = item["DOCUMENTNO"].ToString();
-
-
-                    SqlCommand updateStatusHead = new SqlCommand();
-                    updateStatusHead.CommandText = $@"UPDATE [EBULLING_HEADER]
-                                                SET RECEIVED_BILLERBY = @RECEIVEDBY , RECEIVED_BILLERDATE = GETDATE() , [STATUS] = 'REJECT'
-                                                WHERE DOCUMENTNO = @DOCUMENTNO";
-                    updateStatusHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
-                    updateStatusHead.Parameters.Add(new SqlParameter("@RECEIVEDBY", obj.ReceiveBy));
-                    oConSCM.Query(updateStatusHead);
-
-
-                    SqlCommand updateStatusDeatil = new SqlCommand();
-                    updateStatusDeatil.CommandText = $@"UPDATE [EBULLING_DETAIL]
-                                                          SET [STATUS] = 'REJECT'
-                                                          WHERE [INVOICENO] IN {obj.InvoiceNo}";
-                    oConSCM.Query(updateStatusDeatil);
-                }
-            }
-
-            return Ok();
-        }
-
-
-
-        [HttpPost]
         [Route("PostReportACHeader")]
         public IActionResult PostReportACPerVendor([FromBody] MParammeter obj)
         {
@@ -567,16 +531,19 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     OracleCommand cmdVDNAME = new OracleCommand();
-                    cmdVDNAME.CommandText = @"SELECT VDNAME, 
-                                                    ADDR1 || ' ' || ADDR2 || ' ' || ZIPCODE || ' Tel ' || TELNO || ' Fax ' || FAXNO AS ADDR
-                                                    FROM DST_ACMVD1
-                                                    WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
+                    cmdVDNAME.CommandText = @"SELECT *
+                                                FROM DST_ACMVD1
+                                                WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
                     cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
                     DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
                     if (dtVDNAME.Rows.Count > 0)
                     {
                         MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
-                        MData.ADDRESS = dtVDNAME.Rows[0]["ADDR"].ToString();
+                        MData.ADDRES1 = dtVDNAME.Rows[0]["ADDR1"].ToString();
+                        MData.ADDRES2 = dtVDNAME.Rows[0]["ADDR2"].ToString();
+                        MData.ZIPCODE = dtVDNAME.Rows[0]["ZIPCODE"].ToString();
+                        MData.TELNO = dtVDNAME.Rows[0]["TELNO"].ToString();
+                        MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
                     }
 
 
@@ -671,6 +638,89 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
+        [HttpPost]
+        [Route("PostReportInvoiceByAC")]
+        public IActionResult PostReportInvoiceByAC([FromBody] MParammeter obj)
+        {
+            List<ReportInvoiceByAC> Data_list = new List<ReportInvoiceByAC>();
+
+            string conditionInvDate = "";
+            if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
+            {
+                conditionInvDate = $" AND INVOICEDATE >= '{obj.InvoiceDateFrom}' AND INVOICEDATE <= '{obj.InvoiceDateTo}' ";
+            }
+
+
+            SqlCommand cmdHead = new SqlCommand();
+            cmdHead.CommandText = $@"SELECT [DOCUMENTNO]
+                                        ,FORMAT([DOCUMENTDATE],'dd/MM/yyyy') AS DOCUMENTDATE
+                                        ,[INVOICENO]
+                                        ,FORMAT([INVOICEDATE],'dd/MM/yyyy') AS INVOICEDATE
+                                        ,[VENDORCODE]
+                                        ,[TAXID]
+                                        ,[PAYMENT_TERMS]
+                                        ,FORMAT([DUEDATE],'dd/MM/yyyy') AS DUEDATE
+                                        ,[CURRENCY]
+                                        ,[AMTB]
+                                        ,[VAT]
+                                        ,[TOTALVAT]
+                                        ,[WHTAX]
+                                        ,[TOTAL_WHTAX]
+                                        ,[NETPAID]
+                                        ,[BEFORVATAMOUNT]
+                                        ,[TOTAL_AMOUNT]
+                                        ,[CREATEBY]
+                                        ,FORMAT([CREATEDATE],'dd/MM/yyyy') AS CREATEDATE
+                                        ,[UPDATEBY]
+                                        ,FORMAT([UPDATEDATE],'dd/MM/yyyy') AS UPDATEDATE
+                                        ,[STATUS]
+                                        FROM [dbSCM].[dbo].[EBULLING_DETAIL]
+                                        WHERE VENDORCODE LIKE @VENDORCODE  AND INVOICENO LIKE @INVOICENO {conditionInvDate}";
+            cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
+            cmdHead.Parameters.Add(new SqlParameter("@INVOICENO", obj.InvoiceNo));
+            DataTable dtHead = oConSCM.Query(cmdHead);
+            if (dtHead.Rows.Count > 0)
+            {
+                foreach (DataRow drow in dtHead.Rows)
+                {
+                    ReportInvoiceByAC MData = new ReportInvoiceByAC();
+                    MData.INVOICENO = drow["INVOICENO"].ToString();
+                    MData.INVOICEDATE = drow["INVOICEDATE"].ToString();
+                    MData.PAYMENT_TERMS = drow["PAYMENT_TERMS"].ToString();
+                    MData.DUEDATE = drow["DUEDATE"].ToString();
+                    MData.CURRENCY = drow["CURRENCY"].ToString();
+                    MData.AMTB = Convert.ToDecimal(drow["AMTB"].ToString());
+                    MData.TOTALVAT = Convert.ToDecimal(drow["TOTALVAT"].ToString());
+                    MData.WHTAX = drow["WHTAX"].ToString();
+                    MData.TOTAL_WHTAX = Convert.ToDecimal(drow["TOTAL_WHTAX"].ToString());
+                    MData.TOTAL_AMOUNT = Convert.ToDecimal(drow["TOTAL_AMOUNT"].ToString());
+                    MData.STATUS = drow["STATUS"].ToString();
+
+
+                    string vendorCode = drow["VENDORCODE"].ToString();
+
+
+                    OracleCommand cmdVDNAME = new OracleCommand();
+                    cmdVDNAME.CommandText = @"SELECT VDNAME, 
+                                                    ADDR1 || ' ' || ADDR2 || ' ' || ZIPCODE || ' Tel ' || TELNO || ' Fax ' || FAXNO AS ADDR
+                                                    FROM DST_ACMVD1
+                                                    WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
+                    cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
+                    DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
+                    if (dtVDNAME.Rows.Count > 0)
+                    {
+                        MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
+                    }
+
+
+
+
+                    Data_list.Add(MData);
+                }
+            }
+
+            return Ok(Data_list);
+        }
 
 
         [HttpPost]

@@ -79,7 +79,6 @@
         public string? TAXID { get; set; }
         public string? VENDORCODE { get; set; }
         public string? VENDORNAME { get; set; }
-        public string? ADDRESS { get; set; }
         public string? PAYMENT_TERMS { get; set; }
         public decimal TOTALVAT { get; set; }    
         public decimal TOTAL_AMOUNT { get; set; }
@@ -91,6 +90,12 @@
         public string? RECEIVED_BILLERBY { get; set; }
         public string? RECEIVED_BILLERDATE { get; set; }
         public string? STATUS { get; set; }
+
+        public string? ADDRES1 { get; set; }
+        public string? ADDRES2 { get; set; }
+        public string? ZIPCODE { get; set; }
+        public string? TELNO { get; set; }
+        public string? FAXNO { get; set; }
     }
 
 
@@ -99,6 +104,7 @@
 
         public string? DOCUMENTNO { get; set; }
         public string? INVOICENO { get; set; }
+        public string? INVOICEDATE { get; set; }
         public string? TAXID { get; set; }
         public string? DUEDATE { get; set; }
         public decimal AMTB { get; set; }
@@ -122,5 +128,24 @@
         public string? VendorCode { get; set; }
         public string? InvoiceNo { get; set; }
         public string? PayBy { get; set; }
+    }
+
+
+
+    public class ReportInvoiceByAC
+    {
+
+        public string? INVOICENO { get; set; }
+        public string? INVOICEDATE { get; set; }
+        public string? VENDORNAME { get; set; }
+        public string? PAYMENT_TERMS { get; set; }
+        public string? DUEDATE { get; set; }
+        public string? CURRENCY { get; set; }
+        public decimal AMTB { get; set; }
+        public decimal TOTALVAT { get; set; }
+        public string? WHTAX { get; set; }
+        public decimal TOTAL_WHTAX { get; set; }
+        public decimal TOTAL_AMOUNT { get; set; }
+        public string? STATUS { get; set; }
     }
 }
