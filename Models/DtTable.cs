@@ -79,6 +79,8 @@
         public string? TAXID { get; set; }
         public string? VENDORCODE { get; set; }
         public string? VENDORNAME { get; set; }
+        public string? INVOICENO { get; set; }
+        public string? INVOICEDATE { get; set; }
         public string? PAYMENT_TERMS { get; set; }
         public decimal TOTALVAT { get; set; }    
         public decimal TOTAL_AMOUNT { get; set; }
@@ -89,8 +91,9 @@
         public string? BILLERDATE { get; set; }
         public string? RECEIVED_BILLERBY { get; set; }
         public string? RECEIVED_BILLERDATE { get; set; }
+        public string? PAYMENT_BY { get; set; }
+        public string? PAYMENT_DATE { get; set; }
         public string? STATUS { get; set; }
-
         public string? ADDRES1 { get; set; }
         public string? ADDRES2 { get; set; }
         public string? ZIPCODE { get; set; }

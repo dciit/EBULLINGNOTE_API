@@ -60,22 +60,43 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
         
             OracleCommand sqlSelect = new OracleCommand();
-            sqlSelect.CommandText = $@"SELECT DISTINCT D.VENDER, D.IVNO, 
-                                           TO_CHAR(TO_DATE(D.IVDATE, 'YYYYMMDD'), 'DD/MM/YYYY') AS IVDATE,
-                                           D.VDNAME, D.CURR, D.AMTB,
-                                           D.VATCALC, D.VATIN, D.TOTAMT, 
-                                           D.APBIT, D.SLBIT, D.CHQBIT, D.PAYBIT,
-                                           D.HTANTO, D.CDATE, D.INCOTERM, D.DOCNO_RUNNO, 
-                                           D.ACBIT, V.PAYTRM, V.TAXID
-                                    FROM MC.DST_ACDAP1 D
-                                    LEFT JOIN DST_ACMVD1 V ON V.VENDER = D.VENDER
-                                    WHERE TRIM(D.VENDER) = :VENDER
-                                      AND D.ACBIT = 'F'
-                                      AND D.PAYBIT IN ('U')
-                                      AND TRIM(D.IVNO) LIKE :IVNO
+            sqlSelect.CommandText = $@"SELECT DISTINCT 
+                                                D.VENDER,
+                                                D.IVNO,
+                                                CASE
+                                                    WHEN REGEXP_LIKE(TRIM(D.IVDATE), '^[0-9]{{8}}$')
+                                                    THEN TO_CHAR(TO_DATE(D.IVDATE, 'YYYYMMDD'), 'DD/MM/YYYY')
+                                                    ELSE NULL
+                                                END AS IVDATE,
+                                                D.VDNAME,
+                                                D.CURR,
+                                                D.AMTB,
+                                                D.VATCALC,
+                                                D.VATIN,
+                                                D.TOTAMT,
+                                                D.APBIT,
+                                                D.SLBIT,
+                                                D.CHQBIT,
+                                                D.PAYBIT,
+                                                D.HTANTO,
+                                                D.CDATE,
+                                                D.INCOTERM,
+                                                D.DOCNO_RUNNO,
+                                                D.ACBIT,
+                                                V.PAYTRM,
+                                                V.TAXID
+                                            FROM MC.DST_ACDAP1 D
+                                            LEFT JOIN DST_ACMVD1 V 
+                                                ON V.VENDER = D.VENDER
+                                            WHERE V.PAYTRM IS NOT NULL
+                                              AND TRIM(D.VENDER) = :VENDER
+                                              AND D.APBIT = 'F'
+                                              AND D.PAYBIT IN ('U')
+                                              AND TRIM(D.IVNO) LIKE :IVNO
                                       {conditionInvDate}";
             sqlSelect.Parameters.Add(new OracleParameter(":VENDER", obj.VenderCode));
             sqlSelect.Parameters.Add(new OracleParameter(":IVNO", invoiceNo));
+          
 
             if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
             {
@@ -86,7 +107,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             DataTable dtOracle = oOraAL02.Query(sqlSelect);
 
           
-            SqlCommand cmdHeader = new SqlCommand("SELECT DISTINCT INVOICENO FROM EBULLING_HEADER WHERE INVOICENO IS NOT NULL");
+            SqlCommand cmdHeader = new SqlCommand("SELECT DISTINCT INVOICENO FROM EBILLING_HEADER WHERE INVOICENO IS NOT NULL");
             DataTable dtHeader = oConSCM.Query(cmdHeader);
             var headerInvoiceList = dtHeader.AsEnumerable().Select(r => r["INVOICENO"].ToString()).ToHashSet();
 
@@ -157,14 +178,13 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
 
-
         [HttpPost]
         [Route("PostCreateInvoice")]
         public IActionResult PostCreateInvoice([FromBody] CreateBillingNote obj)
         {
             /****** HEAD ******/
             SqlCommand CreateBillingNoteHead = new SqlCommand();
-            CreateBillingNoteHead.CommandText = @"INSERT INTO [EBULLING_HEADER] ([DOCUMENTNO]
+            CreateBillingNoteHead.CommandText = @"INSERT INTO [EBILLING_HEADER] ([DOCUMENTNO]
                                                   ,[DOCUMENTDATE]
                                                   ,[PAYMENT_TERMS]
                                                   ,[DUEDATE]
@@ -197,7 +217,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             /****** DETAIL ******/
             SqlCommand CreateBillingNoteDetail = new SqlCommand();
-            CreateBillingNoteDetail.CommandText = @"INSERT INTO [EBULLING_DETAIL] ([DOCUMENTNO]
+            CreateBillingNoteDetail.CommandText = @"INSERT INTO [EBILLING_DETAIL] ([DOCUMENTNO]
                                                                             ,[DOCUMENTDATE]
                                                                             ,[INVOICENO]
                                                                             ,[INVOICEDATE]
@@ -277,7 +297,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             cmdHead.CommandText = $@"WITH RankedInvoices AS (
                                                 SELECT *,
                                                         ROW_NUMBER() OVER(PARTITION BY VENDORCODE ORDER BY DOCUMENTDATE DESC) AS rn
-                                                FROM [dbSCM].[dbo].[EBULLING_HEADER]
+                                                FROM [dbSCM].[dbo].[EBILLING_HEADER]
                                                 WHERE STATUS LIKE @STATUS  AND VENDORCODE LIKE  @VENDORCODE {conditionInvDate} 
                                             )
                                             SELECT 
@@ -286,6 +306,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                                 PAYMENT_TERMS,
                                                 FORMAT(DUEDATE,'dd/MM/yyyy') AS DUEDATE,
                                                 VENDORCODE,
+                                                INVOICENO,
                                                 FORMAT(INVOICEDATE,'dd/MM/yyyy') AS INVOICEDATE,
                                                 TAXID,
                                                 BILLERBY,
@@ -318,6 +339,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                     MData.RECEIVED_BILLERBY = drow["RECEIVED_BILLERBY"].ToString();
                     MData.RECEIVED_BILLERDATE = drow["RECEIVED_BILLERDATE"].ToString();
                     MData.STATUS = drow["STATUS"].ToString();
+                    MData.INVOICENO = drow["INVOICENO"].ToString();
+                    MData.INVOICEDATE = drow["INVOICEDATE"].ToString();
 
                     string vendorCode = MData.VENDORCODE;
                     string status = MData.STATUS;
@@ -345,7 +368,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                                 SUM(TOTAL_AMOUNT) AS TOTAL_AMOUNT,
                                                 SUM(TOTAL_WHTAX) AS TOTAL_WHTAX,
                                                 SUM(TOTAL_AMOUNT) - SUM(TOTAL_WHTAX) AS NETPAID
-                                                FROM dbSCM.dbo.EBULLING_DETAIL
+                                                FROM dbSCM.dbo.EBILLING_DETAIL
                                                 WHERE [STATUS] LIKE @STATUS AND [VENDORCODE] = @VENDORCODE 
                                                 GROUP BY VENDORCODE";
                     cmdTotal.Parameters.Add(new SqlParameter("@VENDORCODE", vendorCode));
@@ -366,6 +389,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             return Ok(Data_list);
         }
+
 
 
         [HttpPost]
@@ -398,7 +422,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                             ,[UPDATEBY]
                                             ,FORMAT([UPDATEDATE],'dd/MM/yyyy') AS UPDATEDATE
                                             ,[STATUS]
-                                            FROM [dbSCM].[dbo].[EBULLING_DETAIL]
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
                                             WHERE [STATUS] = @STATUS AND  VENDORCODE LIKE @VENDORCODE";
             cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
             cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
@@ -430,13 +454,69 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
         [HttpPost]
+        [Route("PostReportVendorDetailPrint")]
+        public IActionResult PostReportVendorDetailPrint([FromBody] MParammeter obj)
+        {
+            List<ReportDetail> Data_list = new List<ReportDetail>();
+
+
+            SqlCommand cmdHead = new SqlCommand();
+            cmdHead.CommandText = $@"SELECT [DOCUMENTNO]
+                                            ,FORMAT([DOCUMENTDATE],'dd/MM/yyyy') AS DOCUMENTDATE
+                                            ,[INVOICENO]
+                                            ,FORMAT([INVOICEDATE],'dd/MM/yyyy') AS INVOICEDATE
+                                            ,[VENDORCODE]
+                                            ,[TAXID]
+                                            ,[PAYMENT_TERMS]
+                                            ,FORMAT([DUEDATE],'dd/MM/yyyy') AS DUEDATE
+                                            ,[CURRENCY]
+                                            ,[AMTB]
+                                            ,[VAT]
+                                            ,[TOTALVAT]
+                                            ,[WHTAX]
+                                            ,[TOTAL_WHTAX]
+                                            ,[NETPAID]
+                                            ,[BEFORVATAMOUNT]
+                                            ,[TOTAL_AMOUNT]
+                                            ,[CREATEBY]
+                                            ,FORMAT([CREATEDATE],'dd/MM/yyyy') AS CREATEDATE
+                                            ,[UPDATEBY]
+                                            ,FORMAT([UPDATEDATE],'dd/MM/yyyy') AS UPDATEDATE
+                                            ,[STATUS]
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
+                                            WHERE [STATUS] = @STATUS AND  VENDORCODE LIKE @VENDORCODE";
+            cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
+            cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
+            DataTable dtHead = oConSCM.Query(cmdHead);
+            if (dtHead.Rows.Count > 0)
+            {
+                foreach (DataRow drow in dtHead.Rows)
+                {
+                    ReportDetail MData = new ReportDetail();
+                    MData.INVOICENO = drow["INVOICENO"].ToString();
+                    MData.INVOICEDATE = drow["INVOICEDATE"].ToString();
+                    MData.TOTALVAT = Convert.ToDecimal(drow["TOTALVAT"].ToString());
+                    MData.WHTAX = Convert.ToDecimal(drow["TOTAL_WHTAX"].ToString());
+                    MData.TOTALAMOUNT = Convert.ToDecimal(drow["TOTAL_AMOUNT"].ToString());
+
+
+                    Data_list.Add(MData);
+                }
+            }
+
+            return Ok(Data_list);
+        }
+
+
+
+        [HttpPost]
         [Route("PostReceivebilling")]
         public IActionResult PostReceivebilling([FromBody] MReceiveBuilling obj)
         {
            
             SqlCommand selectDoc = new SqlCommand();
             selectDoc.CommandText = $@"SELECT *
-                                            FROM [dbSCM].[dbo].[EBULLING_DETAIL]
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
                                             WHERE INVOICENO IN {obj.InvoiceNo}";
             DataTable dtDoc = oConSCM.Query(selectDoc);
             if (dtDoc.Rows.Count > 0)
@@ -447,8 +527,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     SqlCommand updateStatusHead = new SqlCommand();
-                    updateStatusHead.CommandText = $@"UPDATE [EBULLING_HEADER]
-                                                SET RECEIVED_BILLERBY = @RECEIVEDBY , RECEIVED_BILLERDATE = GETDATE() , [STATUS] = 'RECEIVE'
+                    updateStatusHead.CommandText = $@"UPDATE [EBILLING_HEADER]
+                                                SET RECEIVED_BILLERBY = @RECEIVEDBY , RECEIVED_BILLERDATE = GETDATE() , [STATUS] = 'CONFIRM'
                                                 WHERE DOCUMENTNO = @DOCUMENTNO";
                     updateStatusHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
                     updateStatusHead.Parameters.Add(new SqlParameter("@RECEIVEDBY", obj.ReceiveBy));
@@ -456,8 +536,47 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     SqlCommand updateStatusDeatil = new SqlCommand();
-                    updateStatusDeatil.CommandText = $@"UPDATE [EBULLING_DETAIL]
-                                                          SET [STATUS] = 'RECEIVE'
+                    updateStatusDeatil.CommandText = $@"UPDATE [EBILLING_DETAIL]
+                                                          SET [STATUS] = 'CONFIRM'
+                                                          WHERE [INVOICENO] IN {obj.InvoiceNo}";
+                    oConSCM.Query(updateStatusDeatil);
+                }
+            }
+
+            return Ok();
+        }
+
+
+
+        [HttpPost]
+        [Route("PostRejectbilling")]
+        public IActionResult PostRejectbilling([FromBody] MReceiveBuilling obj)
+        {
+
+            SqlCommand selectDoc = new SqlCommand();
+            selectDoc.CommandText = $@"SELECT *
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
+                                            WHERE INVOICENO IN {obj.InvoiceNo}";
+            DataTable dtDoc = oConSCM.Query(selectDoc);
+            if (dtDoc.Rows.Count > 0)
+            {
+                foreach (DataRow item in dtDoc.Rows)
+                {
+                    string docNo = item["DOCUMENTNO"].ToString();
+
+
+                    SqlCommand updateStatusHead = new SqlCommand();
+                    updateStatusHead.CommandText = $@"UPDATE [EBILLING_HEADER]
+                                                SET RECEIVED_BILLERBY = @RECEIVEDBY , RECEIVED_BILLERDATE = GETDATE() , [STATUS] = 'REJECT'
+                                                WHERE DOCUMENTNO = @DOCUMENTNO";
+                    updateStatusHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
+                    updateStatusHead.Parameters.Add(new SqlParameter("@RECEIVEDBY", obj.ReceiveBy));
+                    oConSCM.Query(updateStatusHead);
+
+
+                    SqlCommand updateStatusDeatil = new SqlCommand();
+                    updateStatusDeatil.CommandText = $@"UPDATE [EBILLING_DETAIL]
+                                                          SET [STATUS] = 'REJECT'
                                                           WHERE [INVOICENO] IN {obj.InvoiceNo}";
                     oConSCM.Query(updateStatusDeatil);
                 }
@@ -485,7 +604,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             cmdHead.CommandText = $@"WITH RankedInvoices AS (
                                             SELECT *,
                                                    ROW_NUMBER() OVER(PARTITION BY VENDORCODE ORDER BY DOCUMENTDATE DESC) AS rn
-                                            FROM [dbSCM].[dbo].[EBULLING_HEADER]
+                                            FROM [dbSCM].[dbo].[EBILLING_HEADER]
                                             WHERE STATUS LIKE @STATUS  {conditionInvDate}
                                         )
                                         SELECT 
@@ -500,6 +619,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                             FORMAT(BILLERDATE,'dd/MM/yyyy') AS BILLERDATE,
                                             RECEIVED_BILLERBY,
                                             FORMAT(RECEIVED_BILLERDATE,'dd/MM/yyyy') AS RECEIVED_BILLERDATE,
+                                            [PAYBY],
+                                            FORMAT([PAYDATE],'dd/MM/yyyy') AS [PAYDATE],
                                             CREATEBY,
                                             FORMAT(CREATEDATE,'dd/MM/yyyy') AS CREATEDATE,
                                             UPDATEBY,
@@ -524,6 +645,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                     MData.BILLERDATE = drow["BILLERDATE"].ToString();
                     MData.RECEIVED_BILLERBY = drow["RECEIVED_BILLERBY"].ToString();
                     MData.RECEIVED_BILLERDATE = drow["RECEIVED_BILLERDATE"].ToString();
+                    MData.PAYMENT_BY = drow["PAYBY"].ToString();
+                    MData.PAYMENT_DATE = drow["PAYDATE"].ToString();
                     MData.STATUS = drow["STATUS"].ToString();
 
                     string vendorCode = MData.VENDORCODE;
@@ -553,7 +676,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                                 SUM(TOTAL_AMOUNT) AS TOTAL_AMOUNT,
                                                 SUM(TOTAL_WHTAX) AS TOTAL_WHTAX,
                                                 SUM(TOTAL_AMOUNT) - SUM(TOTAL_WHTAX) AS NETPAID
-                                                FROM dbSCM.dbo.EBULLING_DETAIL
+                                                FROM dbSCM.dbo.EBILLING_DETAIL
                                                 WHERE [STATUS] LIKE @STATUS AND [VENDORCODE] = @VENDORCODE 
                                                 GROUP BY VENDORCODE";
                     cmdTotal.Parameters.Add(new SqlParameter("@VENDORCODE", vendorCode));
@@ -608,7 +731,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                             ,[UPDATEBY]
                                             ,FORMAT([UPDATEDATE],'dd/MM/yyyy') AS UPDATEDATE
                                             ,[STATUS]
-                                            FROM [dbSCM].[dbo].[EBULLING_DETAIL]
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
                                             WHERE [STATUS] = @STATUS AND  VENDORCODE = @VENDORCODE";
             cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
             cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
@@ -674,10 +797,11 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                         ,[UPDATEBY]
                                         ,FORMAT([UPDATEDATE],'dd/MM/yyyy') AS UPDATEDATE
                                         ,[STATUS]
-                                        FROM [dbSCM].[dbo].[EBULLING_DETAIL]
-                                        WHERE VENDORCODE LIKE @VENDORCODE  AND INVOICENO LIKE @INVOICENO {conditionInvDate}";
+                                        FROM [dbSCM].[dbo].[EBILLING_DETAIL]
+                                        WHERE VENDORCODE LIKE @VENDORCODE AND STATUS LIKE @STATUS  AND INVOICENO LIKE @INVOICENO {conditionInvDate}";
             cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
             cmdHead.Parameters.Add(new SqlParameter("@INVOICENO", obj.InvoiceNo));
+            cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
             DataTable dtHead = oConSCM.Query(cmdHead);
             if (dtHead.Rows.Count > 0)
             {
@@ -730,8 +854,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             SqlCommand selectDoc = new SqlCommand();
             selectDoc.CommandText = $@"SELECT *
-                                            FROM [dbSCM].[dbo].[EBULLING_DETAIL]
-                                            WHERE VENDORCODE IN {obj.VendorCode}";
+                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
+                                            WHERE VENDORCODE LIKE {obj.VendorCode}";
             DataTable dtDoc = oConSCM.Query(selectDoc);
             if (dtDoc.Rows.Count > 0)
             {
@@ -741,8 +865,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     SqlCommand updateStatusHead = new SqlCommand();
-                    updateStatusHead.CommandText = $@"UPDATE [EBULLING_HEADER]
-                                                SET PAYBY = @PAYBY , PAYDATE = GETDATE() , [STATUS] = 'PAY MENT'
+                    updateStatusHead.CommandText = $@"UPDATE [EBILLING_HEADER]
+                                                SET PAYBY = @PAYBY , PAYDATE = GETDATE() , [STATUS] = 'PAYMENT'
                                                 WHERE DOCUMENTNO = @DOCUMENTNO";
                     updateStatusHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
                     updateStatusHead.Parameters.Add(new SqlParameter("@PAYBY", obj.PayBy));
@@ -750,11 +874,10 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
                     SqlCommand updateStatusDeatil = new SqlCommand();
-                    updateStatusDeatil.CommandText = $@"UPDATE [EBULLING_DETAIL]
-                                                          SET [STATUS] = 'PAY MENT'
-                                                          WHERE [INVOICENO] IN @INVOICENO";
+                    updateStatusDeatil.CommandText = $@"UPDATE [EBILLING_DETAIL]
+                                                          SET [STATUS] = 'PAYMENT'
+                                                          WHERE [INVOICENO] IN {obj.InvoiceNo} AND DOCUMENTNO = @DOCUMENTNO";
                     updateStatusDeatil.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
-                    updateStatusDeatil.Parameters.Add(new SqlParameter("@INVOICENO", obj.InvoiceNo));
                     oConSCM.Query(updateStatusDeatil);
                 }
             }

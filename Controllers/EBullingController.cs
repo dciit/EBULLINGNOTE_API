@@ -39,11 +39,10 @@ namespace INVOICE_VENDER_API.Controllers
               ,[TEL_INCHARGE]
               ,[TEXTID_INCHARGE]
               ,[FAX_INCHARGE]
-              ,[PASSWORD_EXPIRE]
               ,[CRDATE]
               ,[STATUS]
               ,[ADDRESS_INCHARGE]
-          FROM [dbSCM].[dbo].[EBULLING_AUTHEN]");
+          FROM [dbSCM].[dbo].[EBILLING_AUTHEN]");
 
             DataTable dt = dbSCM.Query(test);
 
@@ -93,7 +92,7 @@ namespace INVOICE_VENDER_API.Controllers
                 SqlCommand authenCmd = new SqlCommand();
                 authenCmd.CommandText = @"
                     SELECT 1 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username";
                 authenCmd.Parameters.AddWithValue("@Username", mParam.Username);
 
@@ -113,10 +112,10 @@ namespace INVOICE_VENDER_API.Controllers
 
                 SqlCommand authenregisCmd = new SqlCommand();
                 authenregisCmd.CommandText = @"
-                    INSERT INTO [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    (USERNAME, PASSWORD, USERTYPE, PERSON_INCHARGE, EMAIL_INCHARGE, TEL_INCHARGE, TEXTID_INCHARGE, FAX_INCHARGE, CRDATE, PASSWORD_EXPIRE, STATUS, ADDRESS_INCHARGE)
+                    INSERT INTO [dbSCM].[dbo].[EBILLING_AUTHEN]
+                    (USERNAME, PASSWORD, USERTYPE, PERSON_INCHARGE, EMAIL_INCHARGE, TEL_INCHARGE, TEXTID_INCHARGE, FAX_INCHARGE, CRDATE,  STATUS, ADDRESS_INCHARGE)
                     VALUES
-                    (@Username, @Password, @Usertype, @Personincharge, @Emailincharge, @Telincharge, @Textincharge, @Faxincharge, GETDATE(), @Passwordexpire, @Status, @Addressincharge)";
+                    (@Username, @Password, @Usertype, @Personincharge, @Emailincharge, @Telincharge, @Textincharge, @Faxincharge, GETDATE(),  @Status, @Addressincharge)";
 
                 authenregisCmd.Parameters.AddWithValue("@Username", mParam.Username);
                 authenregisCmd.Parameters.AddWithValue("@Password", passwordHash); //new edit
@@ -128,7 +127,6 @@ namespace INVOICE_VENDER_API.Controllers
                 authenregisCmd.Parameters.AddWithValue("@Faxincharge", mParam.Fax);
 
                 DateTime passwordexp = DateTime.Now.AddMonths(3);
-                authenregisCmd.Parameters.AddWithValue("@Passwordexpire", passwordexp);
                 authenregisCmd.Parameters.AddWithValue("@Status", "ACTIVE");
                 authenregisCmd.Parameters.AddWithValue("@Addressincharge", mParam.Address);
 
@@ -137,7 +135,7 @@ namespace INVOICE_VENDER_API.Controllers
 
                 SqlCommand roleCmd = new SqlCommand();
                 roleCmd.CommandText = @"
-                    INSERT INTO [dbSCM].[dbo].[EBULLING_DICT]
+                    INSERT INTO [dbSCM].[dbo].[EBILLING_DICT]
                     (DICTTYPE, DICTKEYNO, DICTREFNO)
                     VALUES
                     (@Dicttype, @Dictkeyno, @Dictrefno)";
@@ -181,8 +179,8 @@ namespace INVOICE_VENDER_API.Controllers
             {
                 SqlCommand checkexpirepassCmd = new SqlCommand();
                 checkexpirepassCmd.CommandText = @"
-                    SELECT PASSWORD, PASSWORD_EXPIRE 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    SELECT PASSWORD
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username";
 
                 checkexpirepassCmd.Parameters.AddWithValue("@Username", mParam.Username);
@@ -212,14 +210,14 @@ namespace INVOICE_VENDER_API.Controllers
 
 
 
-                DateTime expirepass = Convert.ToDateTime(dtcheckexpirepass.Rows[0]["PASSWORD_EXPIRE"]);
+                //DateTime expirepass = Convert.ToDateTime(dtcheckexpirepass.Rows[0]["PASSWORD_EXPIRE"]);
 
-                if (expirepass <= DateTime.Now)
-                {
-                    res = -3;
-                    msg = "รหัสผ่านของท่านหมดอายุ กรุณาสร้างรหัสใหม่";
-                    return Ok(new { result = res, message = msg });
-                }
+                //if (expirepass <= DateTime.Now)
+                //{
+                //    res = -3;
+                //    msg = "รหัสผ่านของท่านหมดอายุ กรุณาสร้างรหัสใหม่";
+                //    return Ok(new { result = res, message = msg });
+                //}
 
                 string token = CreateToken(mParam.Username);
                 return Ok(new { result = token });
@@ -252,8 +250,8 @@ namespace INVOICE_VENDER_API.Controllers
                     auth.PERSON_INCHARGE,
                     vnd.VenderName,
                     dict.DICTREFNO
-                FROM [dbSCM].[dbo].[EBULLING_AUTHEN] auth
-                LEFT JOIN [dbSCM].[dbo].[EBULLING_DICT] dict
+                FROM [dbSCM].[dbo].[EBILLING_AUTHEN] auth
+                LEFT JOIN [dbSCM].[dbo].[EBILLING_DICT] dict
                     ON auth.USERNAME = dict.DICTKEYNO
                 LEFT JOIN [dbSCM].[dbo].[AL_Vendor] vnd
                     ON auth.USERNAME = vnd.Vender
@@ -369,7 +367,7 @@ namespace INVOICE_VENDER_API.Controllers
                 SqlCommand checkoldpassCmd = new SqlCommand();
                 checkoldpassCmd.CommandText = @"
                     SELECT 1 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username AND PASSWORD = @OldPassword";
                 checkoldpassCmd.Parameters.AddWithValue("@Username", mParam.Username);
                 checkoldpassCmd.Parameters.AddWithValue("@OldPassword", mParam.OldPassword);
@@ -384,7 +382,7 @@ namespace INVOICE_VENDER_API.Controllers
 
                 SqlCommand editpassexpCmd = new SqlCommand();
                 editpassexpCmd.CommandText = @"
-                    UPDATE [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    UPDATE [dbSCM].[dbo].[EBILLING_AUTHEN]
                     SET PASSWORD = @NewPassword, PASSWORD_EXPIRE = DATEADD(MONTH, 3, GETDATE())
                     WHERE USERNAME = @Username";
                 editpassexpCmd.Parameters.AddWithValue("@NewPassword", mParam.NewPassword);
