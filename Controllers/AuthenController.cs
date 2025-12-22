@@ -300,6 +300,7 @@ namespace INVOICE_VENDER_API.Controllers
                 SELECT 
                     auth.USERNAME,
                     auth.PASSWORD,
+                    auth.PERSON_INCHARGE,
                     vnd.VenderName,
                     dict.DICTREFNO
                 FROM [dbSCM].[dbo].[EBILLING_AUTHEN] auth
@@ -341,6 +342,7 @@ namespace INVOICE_VENDER_API.Controllers
                 pwd = pwd,
                 isMatch = isMatch.ToString(),
                 username = user["USERNAME"].ToString(),
+                incharge = user["PERSON_INCHARGE"].ToString(),
                 vendername = user["VenderName"].ToString(),
                 role = user["DICTREFNO"].ToString()
             });
