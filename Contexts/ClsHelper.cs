@@ -7,30 +7,24 @@ namespace INVOICE_VENDER_API.Contexts
     public class ClsHelper
     {
 
-        private SqlConnectDB dbSCM = new SqlConnectDB("dbSCM");
-        //public string GenRunningRegis(string perfix)
-        //{
-        //   string sql = @"
-        //        SELECT TOP 1 USECODE
-        //        FROM [dbSCM].[dbo].[INV_AuthenRegis]
-        //        WHERE USERCODE LIKE @perfix + '%'
-        //        ORDER BY USERCODE DESC";
+        public string GenRunningNumber(string prefix, int idx)
+        {
+            Random rand = new Random();
+            string nxt = rand.Next(1, 99999).ToString("00000");
 
-        //    SqlCommand cmd = new SqlCommand(sql);
-        //    cmd.Parameters.AddWithValue("@perfix", perfix);
+            char[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray();
+            Random random = new Random();
 
-        //    DataTable dt = dbSCM.Query(cmd);
+            int length = 6;
+            StringBuilder stringBuilder = new StringBuilder();
 
-        //    int nextNumber = 1;
+            for (int i = 0; i < length; i++)
+            {
+                int index = random.Next(chars.Length);
+                stringBuilder.Append(chars[index]);
+            }
 
-        //    if (dt.Rows.Count > 0)
-        //    {
-        //        string lastCode = dt.Rows[0]["USERCODE"].ToString();
-        //        string numberPart = lastCode.Replace(perfix, ""); //ตัด perfix ออกก่อน
-        //        nextNumber = int.Parse(numberPart)+1;
-        //    }
-
-        //    return $"{perfix}{nextNumber.ToString("D6")}";
-        //}
+            return $"{prefix}{DateTime.Now.ToString("yyyMMdd")}{stringBuilder.ToString()}{nxt}{DateTime.Now.ToString("fffff")}{idx.ToString("00000")}";
+        }
     }
 }
