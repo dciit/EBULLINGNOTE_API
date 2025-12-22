@@ -16,7 +16,7 @@
         public string Username { get; set; }
         public string Password { get; set; }
         public string Usertype { get; set; }
-        public string Incharge { get; set; }
+        public string? Incharge { get; set; }
         public string? Email { get; set; }
         public string? Tel { get; set; }
         public string? Textid { get; set; }
@@ -44,6 +44,23 @@
         public string Username { get; set; }
     }
 
+    public class Createcalendar
+    {
+        public string CrBy { get; set; }
+        public string CrDate { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
 
+    }
 
+    public class CalendarBilling
+    {
+        public string CldYear { get; set; }
+        public string CldMonth { get; set; }
+        public string BillingStart { get; set; }
+        public string BillingEnd { get; set; }
+        public string? PaymentStart { get; set; }
+        public string? PaymentEnd { get; set; }
+        public string CrBy { get; set; }
+    }
 }

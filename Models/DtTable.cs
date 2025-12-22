@@ -16,6 +16,7 @@
     {
         public string VENDER { get; set; }
         public string VDNAME { get; set; }
+        public string TLXNO { get; set; }
         public string VDABBR { get; set; }
         public string ADDR1 { get; set; }
         public string ADDR2 { get; set; }
@@ -147,5 +148,23 @@
         public decimal TOTAL_WHTAX { get; set; }
         public decimal TOTAL_AMOUNT { get; set; }
         public string? STATUS { get; set; }
+    }
+
+    public class BankAccount
+    {
+        public string ACCOUNTCODE { get; set; }
+        public string ACCOUNT { get; set; }
+        public string ACCOUNTNAME { get; set; }
+
+    }
+
+    public class Calendar
+    {
+        public string CLDYEAR { get; set; }
+        public string CLDMONTH { get; set; }
+        public string BILLING_START { get; set; }
+        public string BILLING_END { get; set; }
+        public string PAYMENT_START { get; set; }
+        public string PAYMENT_END { get; set; }
     }
 }

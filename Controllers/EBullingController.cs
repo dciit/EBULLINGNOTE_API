@@ -25,7 +25,6 @@ namespace INVOICE_VENDER_API.Controllers
 
 
 
-
         [HttpGet]
         [AllowAnonymous]
         public ActionResult AuthenInfo()
@@ -93,7 +92,7 @@ namespace INVOICE_VENDER_API.Controllers
                 SqlCommand authenCmd = new SqlCommand();
                 authenCmd.CommandText = @"
                     SELECT 1 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username";
                 authenCmd.Parameters.AddWithValue("@Username", mParam.Username);
 
@@ -111,46 +110,98 @@ namespace INVOICE_VENDER_API.Controllers
 
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(mParam.Password);
 
-                SqlCommand authenregisCmd = new SqlCommand();
-                authenregisCmd.CommandText = @"
-                    INSERT INTO [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    (USERNAME, PASSWORD, USERTYPE, PERSON_INCHARGE, EMAIL_INCHARGE, TEL_INCHARGE, TEXTID_INCHARGE, FAX_INCHARGE, CRDATE, PASSWORD_EXPIRE, STATUS, ADDRESS_INCHARGE)
+                if (rolRef == "rol_vender")
+                {
+
+                    SqlCommand authenvenderCmd = new SqlCommand();
+                    authenvenderCmd.CommandText = @"
+                    INSERT INTO [dbSCM].[dbo].[EBILLING_AUTHEN]
+                    (USERNAME, PASSWORD, USERTYPE)
                     VALUES
-                    (@Username, @Password, @Usertype, @Personincharge, @Emailincharge, @Telincharge, @Textincharge, @Faxincharge, GETDATE(), @Passwordexpire, @Status, @Addressincharge)";
+                    (@Username, @Password, @Usertype)";
 
-                authenregisCmd.Parameters.AddWithValue("@Username", mParam.Username);
-                authenregisCmd.Parameters.AddWithValue("@Password", passwordHash); //new edit
-                authenregisCmd.Parameters.AddWithValue("@Usertype", utype);
-                authenregisCmd.Parameters.AddWithValue("@Personincharge", mParam.Incharge);
-                authenregisCmd.Parameters.AddWithValue("@Emailincharge", mParam.Email);
-                authenregisCmd.Parameters.AddWithValue("@Telincharge", mParam.Tel);
-                authenregisCmd.Parameters.AddWithValue("@Textincharge", mParam.Textid);
-                authenregisCmd.Parameters.AddWithValue("@Faxincharge", mParam.Fax);
+                    authenvenderCmd.Parameters.AddWithValue("@Username", mParam.Username);
+                    authenvenderCmd.Parameters.AddWithValue("@Password", passwordHash);
+                    authenvenderCmd.Parameters.AddWithValue("@Usertype", utype);
 
-                DateTime passwordexp = DateTime.Now.AddMonths(3);
-                authenregisCmd.Parameters.AddWithValue("@Passwordexpire", passwordexp);
-                authenregisCmd.Parameters.AddWithValue("@Status", "ACTIVE");
-                authenregisCmd.Parameters.AddWithValue("@Addressincharge", mParam.Address);
+                    dbSCM.ExecuteCommand(authenvenderCmd);
 
-                dbSCM.ExecuteCommand(authenregisCmd);
+                    SqlCommand roleCmd = new SqlCommand();
+                    roleCmd.CommandText = @"
+                            INSERT INTO [dbSCM].[dbo].[EBILLING_DICT]
+                            (DICTTYPE, DICTKEYNO, DICTREFNO)
+                            VALUES
+                            (@Dicttype, @Dictkeyno, @Dictrefno)";
 
 
-                SqlCommand roleCmd = new SqlCommand();
-                roleCmd.CommandText = @"
-                    INSERT INTO [dbSCM].[dbo].[EBULLING_DICT]
-                    (DICTTYPE, DICTKEYNO, DICTREFNO)
-                    VALUES
-                    (@Dicttype, @Dictkeyno, @Dictrefno)";
+                    roleCmd.Parameters.AddWithValue("@Dicttype", "PV_MSTUSR");
+                    roleCmd.Parameters.AddWithValue("@Dictkeyno", mParam.Username);
+                    roleCmd.Parameters.AddWithValue("@Dictrefno", rolRef);
+
+                    dbSCM.ExecuteCommand(roleCmd);
+
+                    res = 1;
+                    msg = "success";
+
+                }
+                
+                else if (rolRef == "rol_admin" || rolRef == "rol_accountant")
+                {
+                    SqlCommand nameempCmd = new SqlCommand();
+                    nameempCmd.CommandText = @"
+                    SELECT NAME, SURN, MAIL, TELEPHONE FROM [dbHRM].[dbo].[Employee] WHERE CODE = @CODE";
+
+                    nameempCmd.Parameters.AddWithValue(@"CODE", mParam.Username);
+
+                    DataTable dtNameEmp = dbHRM.Query(nameempCmd);
+
+                    if (dtNameEmp.Rows.Count > 0)
+                    {
+                        string nameemp = dtNameEmp.Rows[0]["NAME"].ToString() + " " + dtNameEmp.Rows[0]["SURN"].ToString();
+                        string email = dtNameEmp.Rows[0]["MAIL"].ToString();
+                        string tel = dtNameEmp.Rows[0]["TELEPHONE"].ToString();
+
+                        SqlCommand authenregisCmd = new SqlCommand();
+                        authenregisCmd.CommandText = @"
+                            INSERT INTO [dbSCM].[dbo].[EBILLING_AUTHEN]
+                            (USERNAME, PASSWORD, USERTYPE, PERSON_INCHARGE, EMAIL_INCHARGE, TEL_INCHARGE, CRDATE, STATUS)
+                            VALUES
+                            (@Username, @Password, @Usertype, @Personincharge, @Emailincharge, @Telincharge, GETDATE(), @Status)";
+
+                        authenregisCmd.Parameters.AddWithValue("@Username", mParam.Username);
+                        authenregisCmd.Parameters.AddWithValue("@Password", passwordHash); //new edit
+                        authenregisCmd.Parameters.AddWithValue("@Usertype", utype);
+                        authenregisCmd.Parameters.AddWithValue("@Personincharge", nameemp);
+                        authenregisCmd.Parameters.AddWithValue("@Emailincharge", email);
+                        authenregisCmd.Parameters.AddWithValue("@Telincharge", tel);
+
+                       // DateTime passwordexp = DateTime.Now.AddMonths(3);
+                       // authenregisCmd.Parameters.AddWithValue("@Passwordexpire", passwordexp);
+                        authenregisCmd.Parameters.AddWithValue("@Status", "ACTIVE");
+
+                        dbSCM.ExecuteCommand(authenregisCmd);
 
 
-                roleCmd.Parameters.AddWithValue("@Dicttype", "PV_MSTUSR");
-                roleCmd.Parameters.AddWithValue("@Dictkeyno", mParam.Username);
-                roleCmd.Parameters.AddWithValue("@Dictrefno", rolRef);
+                        SqlCommand roleCmd = new SqlCommand();
+                        roleCmd.CommandText = @"
+                            INSERT INTO [dbSCM].[dbo].[EBILLING_DICT]
+                            (DICTTYPE, DICTKEYNO, DICTREFNO)
+                            VALUES
+                            (@Dicttype, @Dictkeyno, @Dictrefno)";
 
-                dbSCM.ExecuteCommand(roleCmd);
 
-                res = 1;
-                msg = "success";
+                        roleCmd.Parameters.AddWithValue("@Dicttype", "PV_MSTUSR");
+                        roleCmd.Parameters.AddWithValue("@Dictkeyno", mParam.Username);
+                        roleCmd.Parameters.AddWithValue("@Dictrefno", rolRef);
+
+                        dbSCM.ExecuteCommand(roleCmd);
+
+                        res = 1;
+                        msg = "success";
+                    }
+
+                }
+                
             }
             catch (Exception ex)
             {
@@ -181,8 +232,8 @@ namespace INVOICE_VENDER_API.Controllers
             {
                 SqlCommand checkexpirepassCmd = new SqlCommand();
                 checkexpirepassCmd.CommandText = @"
-                    SELECT PASSWORD, PASSWORD_EXPIRE 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
+                    SELECT PASSWORD 
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username";
 
                 checkexpirepassCmd.Parameters.AddWithValue("@Username", mParam.Username);
@@ -212,14 +263,14 @@ namespace INVOICE_VENDER_API.Controllers
 
 
 
-                DateTime expirepass = Convert.ToDateTime(dtcheckexpirepass.Rows[0]["PASSWORD_EXPIRE"]);
+                //DateTime expirepass = Convert.ToDateTime(dtcheckexpirepass.Rows[0]["PASSWORD_EXPIRE"]);
 
-                if (expirepass <= DateTime.Now)
-                {
-                    res = -3;
-                    msg = "รหัสผ่านของท่านหมดอายุ กรุณาสร้างรหัสใหม่";
-                    return Ok(new { result = res, message = msg });
-                }
+                //if (expirepass <= DateTime.Now)
+                //{
+                //    res = -3;
+                //    msg = "รหัสผ่านของท่านหมดอายุ กรุณาสร้างรหัสใหม่";
+                //    return Ok(new { result = res, message = msg });
+                //}
 
                 string token = CreateToken(mParam.Username);
                 return Ok(new { result = token });
@@ -249,11 +300,10 @@ namespace INVOICE_VENDER_API.Controllers
                 SELECT 
                     auth.USERNAME,
                     auth.PASSWORD,
-                    auth.PERSON_INCHARGE,
                     vnd.VenderName,
                     dict.DICTREFNO
-                FROM [dbSCM].[dbo].[EBULLING_AUTHEN] auth
-                LEFT JOIN [dbSCM].[dbo].[EBULLING_DICT] dict
+                FROM [dbSCM].[dbo].[EBILLING_AUTHEN] auth
+                LEFT JOIN [dbSCM].[dbo].[EBILLING_DICT] dict
                     ON auth.USERNAME = dict.DICTKEYNO
                 LEFT JOIN [dbSCM].[dbo].[AL_Vendor] vnd
                     ON auth.USERNAME = vnd.Vender
@@ -291,7 +341,6 @@ namespace INVOICE_VENDER_API.Controllers
                 pwd = pwd,
                 isMatch = isMatch.ToString(),
                 username = user["USERNAME"].ToString(),
-                incharge = user["PERSON_INCHARGE"].ToString(),
                 vendername = user["VenderName"].ToString(),
                 role = user["DICTREFNO"].ToString()
             });
@@ -369,10 +418,9 @@ namespace INVOICE_VENDER_API.Controllers
                 SqlCommand checkoldpassCmd = new SqlCommand();
                 checkoldpassCmd.CommandText = @"
                     SELECT 1 
-                    FROM [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    WHERE USERNAME = @Username AND PASSWORD = @OldPassword";
+                    FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
+                    WHERE USERNAME = @Username";
                 checkoldpassCmd.Parameters.AddWithValue("@Username", mParam.Username);
-                checkoldpassCmd.Parameters.AddWithValue("@OldPassword", mParam.OldPassword);
                 DataTable dtcheckoldpass = dbSCM.Query(checkoldpassCmd);
 
                 if (dtcheckoldpass.Rows.Count == 0)
@@ -382,12 +430,13 @@ namespace INVOICE_VENDER_API.Controllers
                     return Ok(new { result = res, message = msg });
                 }
 
+                string passwordHash = BCrypt.Net.BCrypt.HashPassword(mParam.NewPassword);
                 SqlCommand editpassexpCmd = new SqlCommand();
                 editpassexpCmd.CommandText = @"
-                    UPDATE [dbSCM].[dbo].[EBULLING_AUTHEN]
-                    SET PASSWORD = @NewPassword, PASSWORD_EXPIRE = DATEADD(MONTH, 3, GETDATE())
+                    UPDATE [dbSCM].[dbo].[EBILLING_AUTHEN]
+                    SET PASSWORD = @NewPassword
                     WHERE USERNAME = @Username";
-                editpassexpCmd.Parameters.AddWithValue("@NewPassword", mParam.NewPassword);
+                editpassexpCmd.Parameters.AddWithValue("@NewPassword",passwordHash);
                 editpassexpCmd.Parameters.AddWithValue("@Username", mParam.Username);
                 dbSCM.ExecuteCommand(editpassexpCmd);
                 res = 1;
@@ -404,36 +453,6 @@ namespace INVOICE_VENDER_API.Controllers
 
 
         }
-
-        [HttpGet]
-        [Route("vdname")]
-        public ActionResult VenderName()
-        {
-            List<DataVender> listvd = new List<DataVender>();
-
-            OracleCommand datavdCmd = new OracleCommand();
-            datavdCmd.CommandText = @"SELECT VENDER, VDNAME, VDABBR, ADDR1, ADDR2 FROM DST_ACMVD1";
-
-            DataTable dtVd = oOraAL02.Query(datavdCmd);
-            if (dtVd.Rows.Count > 0)
-            {
-                foreach (DataRow row in dtVd.Rows)
-                {
-                    DataVender VdData = new DataVender();
-                    VdData.VENDER = row["VENDER"].ToString();
-                    VdData.VDNAME = row["VDNAME"].ToString();
-                    VdData.VDABBR = row["VDABBR"].ToString();
-                    VdData.ADDR1 = row["ADDR1"].ToString();
-                    VdData.ADDR2 = row["ADDR2"].ToString();
-
-                    listvd.Add(VdData);
-                }
-            }
-
-            return Ok(listvd);
-        }
-
-
 
     }
 }
