@@ -20,6 +20,10 @@
         public string VDABBR { get; set; }
         public string ADDR1 { get; set; }
         public string ADDR2 { get; set; }
+        public string TAXID { get; set; }
+        public string ZIPCODE { get; set; }
+        public string TELNO { get; set; }
+        public string FAXNO { get; set; }
     }
 
 

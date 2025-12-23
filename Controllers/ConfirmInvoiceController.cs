@@ -43,6 +43,40 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
+        [HttpGet("getVendor")]
+        [AllowAnonymous]
+        public ActionResult getVendor()
+        {
+            List<DataVender> data_List = new List<DataVender>();
+
+            OracleCommand cmdVendor = new OracleCommand();
+            cmdVendor.CommandText = $@"SELECT VENDER, VENDER || ' : ' || VDNAME  AS VENDORNAME , TAXID ,ADDR1 ,ADDR2 ,ZIPCODE, TELNO, FAXNO
+                                        FROM DST_ACMVD1
+                                        WHERE KAISEQ = '999'";
+            DataTable dtVendor = oOraAL02.Query(cmdVendor);
+            if (dtVendor.Rows.Count > 0)
+            {
+                foreach (DataRow item in dtVendor.Rows)
+                {
+                    DataVender model = new DataVender();
+                    model.VENDER = item["VENDER"].ToString();
+                    model.VDNAME = item["VENDORNAME"].ToString();
+                    model.TAXID = item["TAXID"].ToString();
+                    model.ADDR1 = item["ADDR1"].ToString();
+                    model.ADDR2 = item["ADDR2"].ToString();
+                    model.ZIPCODE = item["ZIPCODE"].ToString();
+                    model.TELNO = item["TELNO"].ToString();
+                    model.FAXNO = item["FAXNO"].ToString();
+
+
+                    data_List.Add(model);
+                }
+            }
+
+            return Ok(data_List);
+        }
+
+
 
         [HttpPost]
         [Route("PostSearchInvoiceRequet")]
@@ -605,7 +639,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                             SELECT *,
                                                    ROW_NUMBER() OVER(PARTITION BY VENDORCODE ORDER BY DOCUMENTDATE DESC) AS rn
                                             FROM [dbSCM].[dbo].[EBILLING_HEADER]
-                                            WHERE STATUS LIKE @STATUS  {conditionInvDate}
+                                            WHERE STATUS <> 'WAITING' AND STATUS LIKE @STATUS  {conditionInvDate}
                                         )
                                         SELECT 
                                             DOCUMENTNO,
