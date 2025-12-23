@@ -2,7 +2,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using API_ITTakeOutComputer.Model;
+using BCrypt.Net;
 using INVOICE_VENDER_API.Contexts;
 using INVOICE_VENDER_API.Models;
 using INVOICE_VENDER_API.Services.Create;
@@ -408,31 +410,76 @@ namespace INVOICE_VENDER_API.Controllers
             int res = 0;
             string msg = "";
 
-            if (string.IsNullOrEmpty(mParam.Username) || string.IsNullOrEmpty(mParam.OldPassword))
+            if (
+                string.IsNullOrEmpty(mParam.Username) || 
+                string.IsNullOrEmpty(mParam.OldPassword) ||
+                string.IsNullOrEmpty(mParam.NewPassword) ||
+                string.IsNullOrEmpty(mParam.ConfirmPassword)
+                )
             {
                 res = -1;
                 msg = "กรุณากรอกข้อมูลให้ครบถ้วน";
                 return Ok(new { result = res, message = msg });
             }
 
+            if (mParam.NewPassword != mParam.ConfirmPassword)
+            {
+                res = -2;
+                msg = "รหัสผ่านใหม่และยืนยันรหัสไม่ตรงกันกรุณาใส่รหัสผ่านให้ตรงกัน";
+                return Ok(new { result = res, message = msg });
+            }
+
             try
             {
+
                 SqlCommand checkoldpassCmd = new SqlCommand();
                 checkoldpassCmd.CommandText = @"
-                    SELECT 1 
+                    SELECT PASSWORD
                     FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
                     WHERE USERNAME = @Username";
                 checkoldpassCmd.Parameters.AddWithValue("@Username", mParam.Username);
+                //checkoldpassCmd.Parameters.AddWithValue("@Password", mParam.OldPassword);
+
                 DataTable dtcheckoldpass = dbSCM.Query(checkoldpassCmd);
 
                 if (dtcheckoldpass.Rows.Count == 0)
                 {
-                    res = -2;
-                    msg = "ไม่พบ username และ password นี้";
+                    res = -3;
+                    msg = "ไม่พบ username นี้";
                     return Ok(new { result = res, message = msg });
                 }
 
+                string oldPasswordHash = dtcheckoldpass.Rows[0]["PASSWORD"].ToString();
+
+                //check old pass
+                bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(
+                        mParam.OldPassword,
+                        oldPasswordHash
+                );
+
+                if (!isOldPasswordCorrect)
+                {
+                    res = -4;
+                    msg = "รหัสผ่านเดิมไม่ถูกต้อง";
+                    return Ok(new { result = res, message = msg });
+                }
+
+                //check new pass with old pass that are duplicate
+                bool isSameAsOld = BCrypt.Net.BCrypt.Verify(
+                    mParam.ConfirmPassword,
+                    oldPasswordHash
+                );
+
+                if (isSameAsOld)
+                {
+                    res = -5;
+                    msg = "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม";
+                    return Ok(new { result = res, message = msg });
+                }
+
+                //new pass hash
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(mParam.NewPassword);
+
                 SqlCommand editpassexpCmd = new SqlCommand();
                 editpassexpCmd.CommandText = @"
                     UPDATE [dbSCM].[dbo].[EBILLING_AUTHEN]
@@ -448,7 +495,7 @@ namespace INVOICE_VENDER_API.Controllers
 
             catch (Exception ex)
             {
-                res = -3;
+                res = -99;
                 msg = ex.Message;
                 return Ok(new { result = res, message = msg });
             }
