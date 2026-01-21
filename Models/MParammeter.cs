@@ -16,12 +16,6 @@
         public string Username { get; set; }
         public string Password { get; set; }
         public string Usertype { get; set; }
-        public string? Incharge { get; set; }
-        public string? Email { get; set; }
-        public string? Tel { get; set; }
-        public string? Textid { get; set; }
-        public string? Fax { get; set; }
-        public string? Address { get; set; }
         public string Role { get; set; }
     }
 
@@ -45,23 +39,40 @@
         public string Username { get; set; }
     }
 
-    public class Createcalendar
-    {
-        public string CrBy { get; set; }
-        public string CrDate { get; set; }
-        public string StartDate { get; set; }
-        public string EndDate { get; set; }
+    //public class Createcalendar
+    //{
+    //    public string CrBy { get; set; }
+    //    public string CrDate { get; set; }
+    //    public string StartDate { get; set; }
+    //    public string EndDate { get; set; }
 
-    }
+    //}
 
-    public class CalendarBilling
+    public class CreateCalendar
     {
         public string CldYear { get; set; }
         public string CldMonth { get; set; }
-        public string BillingStart { get; set; }
-        public string BillingEnd { get; set; }
-        public string? PaymentStart { get; set; }
-        public string? PaymentEnd { get; set; }
+        public string DateStart { get; set; }
+        public string DateEnd { get; set; }
+        public string CldType { get; set; }
         public string CrBy { get; set; }
+    }
+
+    public class CreateVenderInfo
+    {
+        public string Username { get; set; }
+        public string Name { get; set; }
+        public string Compname { get; set; }
+        public string Email { get; set; }
+        public string TaxID { get; set; }
+        public string Branchno { get; set; }
+        public string Fax { get; set; }
+        public string Telephone { get; set; }
+        public string Address { get; set; }
+        public string Accountname { get; set; }
+        public string Accountno { get; set; }
+        public string BName { get; set; }
+        public string BBranchname { get; set; }
+        public string BBranchno { get; set; }
     }
 }

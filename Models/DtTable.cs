@@ -163,11 +163,70 @@
 
     public class Calendar
     {
+        public string CLDCODE { get; set; }
         public string CLDYEAR { get; set; }
         public string CLDMONTH { get; set; }
-        public string BILLING_START { get; set; }
-        public string BILLING_END { get; set; }
-        public string PAYMENT_START { get; set; }
-        public string PAYMENT_END { get; set; }
+        public string EVENTTYPE { get; set; }
+        public string STARTDATE { get; set; }
+        public string ENDDATE { get; set; }
+        
     }
+
+    public class Dictionary
+    {
+        public string DICTTYPE { get; set; }
+        public string DICTKEYNO { get; set; }
+        public string DICTREFNO { get; set; }
+        public string DICTTITLE { get; set; }
+        public string DICTVALUE { get; set; }
+    }
+
+    public class Vender
+    {
+        public string VENDER { get; set; }
+        public string VDNAME { get; set; }
+        public string ADDR1 { get; set; }
+        public string ADDR2 { get; set; }
+        public string TELNO { get; set; }
+        public string FAXNO { get; set; }
+        public string TLXNO { get; set; }
+        public string AIEMAIL { get; set; }
+    }
+
+    public class AuthenInfo
+    {
+        public string USERNAME { get; set; }
+        public string USERTYPE { get; set; }
+        public string COMPANY_NAME { get; set; }
+        public string EMAIL { get; set; }
+        public string TELEPHONE { get; set; }
+        public string TAXID { get; set; }
+        public string FAX { get; set; }
+        public string COMPANTBRANCH { get; set; }
+        public string ADDRESS { get; set; }
+        public string ACCOUNT_NAME { get; set; }
+        public string ACCOUNT_NUMER { get; set; }
+        public string BANK_NAME { get; set; }
+        public string BANKBRANCH_NAME { get; set; }
+        public string BANKBRANCH_NO { get; set; }
+    }
+
+    public class VendorinfoLog
+    {
+        public string ID { get; set; }
+        public string USERNAME { get; set; }
+        public string NAME { get; set; }
+        public string COMPANYNAME { get; set; }
+        public string EMAIL { get; set; }
+        public string TAXID { get; set; }
+        public string BRANCHNO { get; set; }
+        public string FAX { get; set; }
+        public string TELEPHONE { get; set; }
+        public string ADDRESS { get; set; }
+        public string ACCNAME { get; set; }
+        public string ACCNO { get; set; }
+        public string BANKNAME { get; set; }
+        public string BANKBRANCHNAME { get; set; }
+        public string BANKBRANCHNO { get; set; }
+     }
 }
