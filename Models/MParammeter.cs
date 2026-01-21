@@ -9,6 +9,7 @@
         public string? DocumentNo { get; set; }
         public string? status { get; set; }
         public string? Role { get; set; }
+        public string? ACTYPE { get; set; }
     }
 
     public class RegisRequest

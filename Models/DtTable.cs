@@ -20,6 +20,10 @@
         public string VDABBR { get; set; }
         public string ADDR1 { get; set; }
         public string ADDR2 { get; set; }
+        public string TAXID { get; set; }
+        public string ZIPCODE { get; set; }
+        public string TELNO { get; set; }
+        public string FAXNO { get; set; }
     }
 
 
@@ -39,6 +43,10 @@
         public string WHTax { get; set; }
         public string TaxID { get; set; }
         public string GrandTotal { get; set; }
+        public string InvoiceStatus { get; set; }
+        public string DocumentNo { get; set; }
+        public string ACTYPE { get; set; }
+
     }
 
 
@@ -66,7 +74,7 @@
         public decimal NETPAID { get; set; }
         public decimal BEFORVATAMOUNT { get; set; }
         public decimal TOTAL_AMOUNT { get; set; }
-
+        public string? ACTYPE { get; set; }
     }
 
 
@@ -100,6 +108,11 @@
         public string? ZIPCODE { get; set; }
         public string? TELNO { get; set; }
         public string? FAXNO { get; set; }
+        public string? ACTYPE { get; set; }
+        public string? FILE_NAME { get; set; }
+        public string? REJECT_BY { get; set; }
+        public string? REJECT_DATE { get; set; }
+
     }
 
 
@@ -107,23 +120,41 @@
     {
 
         public string? DOCUMENTNO { get; set; }
+        public string? DOCUMENTDATE { get; set; }
         public string? INVOICENO { get; set; }
         public string? INVOICEDATE { get; set; }
         public string? TAXID { get; set; }
         public string? DUEDATE { get; set; }
+        public string? VENDORCODE { get; set; }
+        public string? VENDORNAME { get; set; }
+        public string? PAYMENT_TERMS { get; set; }
+        public string? CURRENCY { get; set; }
+        public string? STATUS { get; set; }
+        public string? REMARK { get; set; }
         public decimal AMTB { get; set; }
         public decimal VAT { get; set; }
         public decimal TOTALVAT { get; set; }
         public string? RATE { get; set; }
         public decimal WHTAX { get; set; }
         public decimal TOTALAMOUNT { get; set; }
+        public string ADDR1 { get; set; }
+        public string ADDR2 { get; set; }
+        public string ZIPCODE { get; set; }
+        public string TELNO { get; set; }
+        public string FAXNO { get; set; }
+        public string CREATEBY { get; set; }
+        public string CREATEDATE { get; set; }
+        public string RECEIVED_BILLERBY { get; set; }
+        public string RECEIVED_BILLERDATE { get; set; }
     }
 
 
     public class MReceiveBuilling
     {
-        public string? InvoiceNo { get; set; }
-        public string? ReceiveBy { get; set; }
+        public string? DocumentNo { get; set; }
+        public List<string> InvoiceNos { get; set; }
+        public string? IssuedBy { get; set; }
+        public List<string> Remarks { get; set; }
     }
 
 
@@ -141,6 +172,7 @@
 
         public string? INVOICENO { get; set; }
         public string? INVOICEDATE { get; set; }
+        public string? VENDORCODE { get; set; }
         public string? VENDORNAME { get; set; }
         public string? PAYMENT_TERMS { get; set; }
         public string? DUEDATE { get; set; }
@@ -151,6 +183,7 @@
         public decimal TOTAL_WHTAX { get; set; }
         public decimal TOTAL_AMOUNT { get; set; }
         public string? STATUS { get; set; }
+        public string? ACTYPE { get; set; }
     }
 
     public class BankAccount

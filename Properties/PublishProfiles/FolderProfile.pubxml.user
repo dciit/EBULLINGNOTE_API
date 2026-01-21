@@ -5,7 +5,7 @@ https://go.microsoft.com/fwlink/?LinkID=208121.
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>D:\Project\2025\INVOICEBILLINENOTE_API\bin\Release\net6.0\publish\</_PublishTargetUrl>
-    <History>True|2025-12-22T05:08:07.3355032Z||;</History>
+    <History>True|2025-12-22T08:24:09.4470462Z||;True|2025-12-22T12:08:07.3355032+07:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

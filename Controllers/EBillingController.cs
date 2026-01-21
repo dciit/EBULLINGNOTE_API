@@ -27,7 +27,7 @@ namespace INVOICEBILLINENOTE_API.Controllers
             List<DataVender> listvd = new List<DataVender>();
 
             OracleCommand datavdCmd = new OracleCommand();
-            datavdCmd.CommandText = @"SELECT VENDER, VDNAME, TLXNO, VDABBR, ADDR1, ADDR2 FROM DST_ACMVD1";
+            datavdCmd.CommandText = @"SELECT VENDER, VDNAME, TAXID, VDABBR, ADDR1, ADDR2 FROM DST_ACMVD1";
 
             DataTable dtVd = oOraAL02.Query(datavdCmd);
             if (dtVd.Rows.Count > 0)
@@ -37,7 +37,7 @@ namespace INVOICEBILLINENOTE_API.Controllers
                     DataVender VdData = new DataVender();
                     VdData.VENDER = row["VENDER"].ToString();
                     VdData.VDNAME = row["VDNAME"].ToString();
-                    VdData.TLXNO = row["TLXNO"].ToString();
+                    VdData.TLXNO = row["TAXID"].ToString();
                     VdData.VDABBR = row["VDABBR"].ToString();
                     VdData.ADDR1 = row["ADDR1"].ToString();
                     VdData.ADDR2 = row["ADDR2"].ToString();
