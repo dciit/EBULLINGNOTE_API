@@ -40,6 +40,12 @@
         public string Username { get; set; }
     }
 
+    public class RejectVdInfo
+    {
+        public string Username { get; set; }
+        public string Remark { get; set; }
+    }
+
     //public class Createcalendar
     //{
     //    public string CrBy { get; set; }
