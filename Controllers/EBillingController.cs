@@ -103,6 +103,8 @@ namespace INVOICEBILLINENOTE_API.Controllers
                     return Ok(new { result = res, message = msg });
                 }
 
+
+
                 DateTime startDate = DateTime.Parse(mParam.DateStart);
                 DateTime endDate = DateTime.Parse(mParam.DateEnd);
 
@@ -471,7 +473,7 @@ namespace INVOICEBILLINENOTE_API.Controllers
 
         [HttpPost]
         [Route("confirmaccsetting")]
-        public IActionResult EditVenderinfo([FromBody] EmpName mParam)
+        public IActionResult ConfrimVenderinfo([FromBody] EmpName mParam)
         {
             int res = 0;
             string msg = "";
@@ -592,7 +594,8 @@ namespace INVOICEBILLINENOTE_API.Controllers
             mail.Subject = "แจ้งเตือนจากระบบวางบิล vendor มีการ setting ข้อมูลใหม่";
             mail.IsBodyHtml = true;
             mail.Priority = MailPriority.High;
-            mail.To.Add(rowLog["EMAIL"].ToString());
+            //mail.To.Add(rowLog["EMAIL"].ToString()); ใช้จริงให้เปลี่ยนกลับมาเป้นอันนี้
+            mail.To.Add("anuthida.w@dci.daikin.co.jp");
 
             mail.Body = string.Format(mailTemplate,
                 mParam.Username,
@@ -638,6 +641,111 @@ namespace INVOICEBILLINENOTE_API.Controllers
             return Ok(new { result = res, message = msg });
         }
 
+        [HttpPost]
+        [Route("rejectaccsetting")]
+        public IActionResult RejectVenderinfo([FromBody] RejectVdInfo mParam)
+        {
+            int res = 0;
+            string msg = "";
+
+            if (string.IsNullOrEmpty(mParam.Username))
+            {
+                return Ok(new { result = -1, message = "ไม่พบข้อมูล vendor" });
+            }
+
+            // ===================== GET VENDOR LOG =====================
+            SqlCommand logCmd = new SqlCommand(@"
+                SELECT TOP 1 *
+                FROM [dbSCM].[dbo].[EBILLING_VENDORINFO_LOG]
+                WHERE USERNAME = @USERNAME AND STATE = 'CREATE'
+                ORDER BY CRDDATE DESC");
+            logCmd.Parameters.AddWithValue("@USERNAME", mParam.Username);
+
+            DataTable logData = dbSCM.Query(logCmd);
+            if (logData.Rows.Count == 0)
+            {
+                return Ok(new { result = -2, message = "ไม่พบข้อมูล vendor log" });
+            }
+
+            DataRow rowLog = logData.Rows[0];
+
+            // ===================== GET AUTHEN =====================
+            SqlCommand authenCmd = new SqlCommand(@"
+                SELECT *
+                FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
+                WHERE USERNAME = @USERNAME");
+            authenCmd.Parameters.AddWithValue("@USERNAME", mParam.Username);
+
+            DataTable authenData = dbSCM.Query(authenCmd);
+            if (authenData.Rows.Count == 0)
+            {
+                return Ok(new { result = -3, message = "ไม่พบข้อมูล Authen" });
+            }
+
+            // ===================== UPDATE LOG STATE =====================
+            SqlCommand updateStateCmd = new SqlCommand(@"
+                    UPDATE [dbSCM].[dbo].[EBILLING_VENDORINFO_LOG]
+                    SET STATE = 'REJECT',
+                        REMARK = @REMARK
+                    WHERE USERNAME = @USERNAME AND STATE = 'CREATE'");
+            updateStateCmd.Parameters.AddWithValue("@USERNAME", mParam.Username);
+            updateStateCmd.Parameters.AddWithValue("@REMARK", mParam.Remark);
+            dbSCM.ExecuteCommand(updateStateCmd);
+
+
+            // ===================== SEND MAIL =====================
+            string mailTemplate = "";
+            try
+            {
+                mailTemplate = System.IO.File.ReadAllText("htmlpage.html");
+            }
+            catch
+            {
+                return Ok(new { result = -4, message = "ไม่พบไฟล์ email template" });
+            }
+
+            MailMessage mail = new MailMessage();
+            SmtpClient smtp = new SmtpClient("smtp.dci.daikin.co.jp", 25);
+            smtp.UseDefaultCredentials = false;
+
+            mail.From = new MailAddress("dci-noreply@dci.daikin.co.jp", "E-Billing");
+            mail.Subject = "แจ้งเตือนจากระบบวางบิล vendor มีการ setting ข้อมูลใหม่";
+            mail.IsBodyHtml = true;
+            mail.Priority = MailPriority.High;
+            //mail.To.Add(rowLog["EMAIL"].ToString()); ใช้จริงให้เปลี่ยนกลับมาเป้นอันนี้
+            mail.To.Add("anuthida.w@dci.daikin.co.jp");
+
+            mail.Body = string.Format(mailTemplate,
+                mParam.Username,
+                rowLog["COMPANYNAME"],
+                rowLog["NAME"],
+                rowLog["EMAIL"],
+                rowLog["TAXID"],
+                rowLog["BRANCHNO"],
+                rowLog["FAX"],
+                rowLog["TELEPHONE"],
+                rowLog["ADDRESS"],
+                rowLog["ACCNAME"],
+                rowLog["ACCNO"],
+                rowLog["BANKNAME"],
+                rowLog["BANKBRANCHNAME"],
+                rowLog["BANKBRANCHNO"],
+                mParam.Remark
+            );
+
+            try
+            {
+                smtp.Send(mail);
+                res = 1;
+                msg = "successfully";
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { result = -5, message = "ส่งเมลไม่สำเร็จ: " + ex.Message });
+            }
+
+            return Ok(new { result = res, message = msg });
+        }
 
         [HttpGet]
         [Route("accfromvendor")]

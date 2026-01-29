@@ -123,6 +123,7 @@ namespace INVOICE_VENDER_API.Controllers
                     if (dtOracle.Rows.Count > 0)
                     {
                         //string nameemp = dtNameEmp.Rows[0]["NAME"].ToString() + " " + dtNameEmp.Rows[0]["SURN"].ToString();
+                        string vdcode = dtOracle.Rows[0]["VDCODE"].ToString().Trim();
                         string companyname = dtOracle.Rows[0]["VDNAME"].ToString();
                         string email = dtOracle.Rows[0]["POEMAIL"].ToString();
                         string tel = dtOracle.Rows[0]["TELNO"].ToString();
@@ -134,13 +135,14 @@ namespace INVOICE_VENDER_API.Controllers
                         SqlCommand authenvenderCmd = new SqlCommand();
                         authenvenderCmd.CommandText = @"
                         INSERT INTO [dbSCM].[dbo].[EBILLING_AUTHEN]
-                        (USERNAME, PASSWORD, USERTYPE, COMPANY_NAME, EMAIL, TELEPHONE, TAXID, FAX, COMPANYBRANCH, CRDATE, STATUS, ADDRESS)
+                        (USERNAME, PASSWORD, USERTYPE, VDCODE, COMPANY_NAME, EMAIL, TELEPHONE, TAXID, FAX, COMPANYBRANCH, CRDATE, STATUS, ADDRESS)
                         VALUES
-                        (@Username, @Password, @Usertype, @Companyname, @Email, @Telephone, @Taxid, @Fax, @Companybranch, GETDATE(), @Status, @Address)";
+                        (@Username, @Password, @Usertype, @Vdcode, @Companyname, @Email, @Telephone, @Taxid, @Fax, @Companybranch, GETDATE(), @Status, @Address)";
 
                         authenvenderCmd.Parameters.AddWithValue("@Username", mParam.Username);
                         authenvenderCmd.Parameters.AddWithValue("@Password", passwordHash);
                         authenvenderCmd.Parameters.AddWithValue("@Usertype", utype);
+                        authenvenderCmd.Parameters.AddWithValue("@Vdcode", vdcode);
                         authenvenderCmd.Parameters.AddWithValue("@Companyname", companyname);
                         authenvenderCmd.Parameters.AddWithValue("@Email", email);
                         authenvenderCmd.Parameters.AddWithValue("@Telephone", tel);
