@@ -26,6 +26,14 @@
         public string FAXNO { get; set; }
     }
 
+    public class DataInvoiceCheck
+    {
+        public string DICTTYPE { get; set; }
+        public string DICTKEYNO { get; set; }
+        public string DICTREFNO { get; set; }
+        public string DICTTITLE { get; set; }
+    }
+
 
     public class DataForConfirmInvoice
     {
@@ -75,6 +83,8 @@
         public decimal BEFORVATAMOUNT { get; set; }
         public decimal TOTAL_AMOUNT { get; set; }
         public string? ACTYPE { get; set; }
+        public string? IS_INVOICECORRECT { get; set; }
+        public string? INVOICE_VERIFICATION_REMARK { get; set; }
     }
 
 
@@ -144,8 +154,11 @@
         public string FAXNO { get; set; }
         public string CREATEBY { get; set; }
         public string CREATEDATE { get; set; }
+        public string BILLERBY { get; set; }
+        public string BILLERDATE { get; set; }
         public string RECEIVED_BILLERBY { get; set; }
         public string RECEIVED_BILLERDATE { get; set; }
+
     }
 
 
@@ -160,10 +173,23 @@
 
     public class MPayment
     {
-        public string? VendorCode { get; set; }
-        public string? InvoiceNo { get; set; }
-        public string? PayBy { get; set; }
+        public List<string> VendorCode { get; set; }
+        public string? IssuedBy { get; set; }
+        public List<string> status { get; set; }
+        public string? InvoiceDateFrom { get; set; }
+        public string? InvoiceDateTo { get; set; }
     }
+
+    public class MCancelPayment
+    {
+        public string? VendorCode { get; set; }
+        public string? IssuedBy { get; set; }
+        public string? status { get; set; }
+        public string? InvoiceDateFrom { get; set; }
+        public string? InvoiceDateTo { get; set; }
+    }
+
+
 
 
 

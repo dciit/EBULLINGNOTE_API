@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Globalization;
+using System.Net.Mail;
 using API_ITTakeOutComputer.Model;
 using INVOICE_VENDER_API.Models;
 using INVOICE_VENDER_API.Services.Create;
@@ -44,30 +45,31 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
-        [HttpGet("getVendor")]
+        [HttpGet("getINVCHECK")]
         [AllowAnonymous]
-        public ActionResult getVendor()
+        public ActionResult getINVCHECK()
         {
-            List<DataVender> data_List = new List<DataVender>();
+            List<DataInvoiceCheck> data_List = new List<DataInvoiceCheck>();
 
-            OracleCommand cmdVendor = new OracleCommand();
-            cmdVendor.CommandText = $@"SELECT VENDER, VENDER || ' : ' || VDNAME  AS VENDORNAME , TAXID ,ADDR1 ,ADDR2 ,ZIPCODE, TELNO, FAXNO
-                                        FROM DST_ACMVD1
-                                        WHERE KAISEQ = '999'";
-            DataTable dtVendor = oOraAL02.Query(cmdVendor);
-            if (dtVendor.Rows.Count > 0)
+            SqlCommand cmdDict = new SqlCommand();
+            cmdDict.CommandText = $@"SELECT [DICTTYPE]
+                                            ,[DICTKEYNO]
+                                            ,[DICTREFNO]
+                                            ,[DICTTITLE]
+                                            ,[DICTVALUE]
+                                            FROM [dbSCM].[dbo].[EBILLING_DICT]
+                                            WHERE DICTTYPE = 'PV_INVCHECK'";
+            DataTable dtDict = oConSCM.Query(cmdDict);
+            if (dtDict.Rows.Count > 0)
             {
-                foreach (DataRow item in dtVendor.Rows)
+                foreach (DataRow item in dtDict.Rows)
                 {
-                    DataVender model = new DataVender();
-                    model.VENDER = item["VENDER"].ToString();
-                    model.VDNAME = item["VENDORNAME"].ToString();
-                    model.TAXID = item["TAXID"].ToString();
-                    model.ADDR1 = item["ADDR1"].ToString();
-                    model.ADDR2 = item["ADDR2"].ToString();
-                    model.ZIPCODE = item["ZIPCODE"].ToString();
-                    model.TELNO = item["TELNO"].ToString();
-                    model.FAXNO = item["FAXNO"].ToString();
+                    DataInvoiceCheck model = new DataInvoiceCheck();
+                    model.DICTTYPE = item["DICTTYPE"].ToString();
+                    model.DICTKEYNO = item["DICTKEYNO"].ToString();
+                    model.DICTREFNO = item["DICTREFNO"].ToString();
+                    model.DICTTITLE = item["DICTTITLE"].ToString();
+
 
 
                     data_List.Add(model);
@@ -272,13 +274,15 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                                                                             ,[NETPAID]
                                                                             ,[BEFORVATAMOUNT]
                                                                             ,[TOTAL_AMOUNT]
+                                                                           ,[IS_INVOICECORRECT]
+                                                                           ,[INVOICE_VERIFICATION_REMARK]
                                                                             ,[CREATEBY]
                                                                             ,[CREATEDATE]
                                                                             ,[STATUS])
                                                         VALUES (@DOCUMENTNO,@DOCUMENTDATE,@INVOICENO,
                                                         @INVOICEDATE,@VENDORCODE,@TAXID,@PAYMENT_TERMS,
                                                         @DUEDATE,@ACTYPE,@CURRENCY,@AMTB,@VAT,@TOTALVAT,@WHTAX,
-                                                        @TOTAL_WHTAX,@NETPAID,@BEFORVATAMOUNT,@TOTAL_AMOUNT,
+                                                        @TOTAL_WHTAX,@NETPAID,@BEFORVATAMOUNT,@TOTAL_AMOUNT,@IS_INVOICECORRECT,@INVOICE_VERIFICATION_REMARK,
                                                         @CREATEBY,GETDATE(),@STATUS)";
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DOCUMENTNO));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTDATE", obj.DOCUMENTDATE));
@@ -287,7 +291,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VENDORCODE));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TAXID", obj.TAXID));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@PAYMENT_TERMS", obj.PAYMENT_TERMS));
-            CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DUEDATE", obj.DUEDATE));
+            CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DUEDATE", (object)obj.DUEDATE ?? DBNull.Value));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CURRENCY", obj.CURRENCY));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@AMTB", obj.AMTB));
@@ -298,6 +302,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@NETPAID", obj.NETPAID));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@BEFORVATAMOUNT", obj.BEFORVATAMOUNT));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTAL_AMOUNT", obj.TOTAL_AMOUNT));
+            CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@IS_INVOICECORRECT", obj.IS_INVOICECORRECT));
+            CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICE_VERIFICATION_REMARK", obj.INVOICE_VERIFICATION_REMARK));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CREATEBY", obj.CREATEBY));
             CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@STATUS", obj.STATUS));
 
@@ -306,6 +312,306 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             return Ok();
         }
+
+
+
+        //[HttpPost]
+        //[Route("PostInvoiceincorrect")]
+        //public IActionResult PostInvoiceincorrect([FromBody] CreateBillingNote obj)
+        //{
+        //    /****** HEAD ******/
+        //    SqlCommand CreateBillingNoteHead = new SqlCommand();
+        //    CreateBillingNoteHead.CommandText = @"INSERT INTO [EBILLING_HEADER] ([DOCUMENTNO]
+        //                                          ,[DOCUMENTDATE]
+        //                                          ,[PAYMENT_TERMS]
+        //                                          ,[DUEDATE]
+        //                                          ,[ACTYPE]
+        //                                          ,[VENDORCODE]
+        //                                          ,[INVOICENO]
+        //                                          ,[INVOICEDATE]
+        //                                          ,[TAXID]
+        //                                          ,[BILLERBY]
+        //                                          ,[BILLERDATE]
+        //                                          ,[CREATEBY]
+        //                                          ,[CREATEDATE]
+        //                                          ,[STATUS])
+        //                                      VALUES (@DOCUMENTNO,@DOCUMENTDATE,@PAYMENT_TERMS,@DUEDATE,@ACTYPE
+        //                                            ,@VENDORCODE,@INVOICENO,@INVOICEDATE,@TAXID,@BILLERBY,GETDATE(),@CREATEBY,GETDATE(),@STATUS)";
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DOCUMENTNO));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DOCUMENTDATE", (object)obj.DOCUMENTDATE ?? DBNull.Value));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@PAYMENT_TERMS", obj.PAYMENT_TERMS));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DUEDATE", (object)obj.DUEDATE ?? DBNull.Value));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VENDORCODE));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@INVOICENO", obj.INVOICENO));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@INVOICEDATE", (object)obj.INVOICEDATE ?? DBNull.Value));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@TAXID", obj.TAXID));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@BILLERBY", obj.BILLERBY));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@CREATEBY", obj.CREATEBY));
+        //    CreateBillingNoteHead.Parameters.Add(new SqlParameter("@STATUS", obj.STATUS));
+
+        //  //  oConSCM.Query(CreateBillingNoteHead);
+        //    /****** END HEAD ******/
+
+
+        //    /****** DETAIL ******/
+        //    SqlCommand CreateBillingNoteDetail = new SqlCommand();
+        //    CreateBillingNoteDetail.CommandText = @"INSERT INTO [EBILLING_DETAIL] ([DOCUMENTNO]
+        //                                                                    ,[DOCUMENTDATE]
+        //                                                                    ,[INVOICENO]
+        //                                                                    ,[INVOICEDATE]
+        //                                                                    ,[VENDORCODE]
+        //                                                                    ,[TAXID]
+        //                                                                    ,[PAYMENT_TERMS]
+        //                                                                    ,[DUEDATE]
+        //                                                                    ,[ACTYPE]
+        //                                                                    ,[CURRENCY]
+        //                                                                    ,[AMTB]
+        //                                                                    ,[VAT]
+        //                                                                    ,[TOTALVAT]
+        //                                                                    ,[WHTAX]
+        //                                                                    ,[TOTAL_WHTAX]
+        //                                                                    ,[NETPAID]
+        //                                                                    ,[BEFORVATAMOUNT]
+        //                                                                    ,[TOTAL_AMOUNT]
+        //                                                                   ,[IS_INVOICECORRECT]
+        //                                                                   ,[INVOICE_VERIFICATION_REMARK]
+        //                                                                    ,[CREATEBY]
+        //                                                                    ,[CREATEDATE]
+        //                                                                    ,[STATUS])
+        //                                                VALUES (@DOCUMENTNO,@DOCUMENTDATE,@INVOICENO,
+        //                                                @INVOICEDATE,@VENDORCODE,@TAXID,@PAYMENT_TERMS,
+        //                                                @DUEDATE,@ACTYPE,@CURRENCY,@AMTB,@VAT,@TOTALVAT,@WHTAX,
+        //                                                @TOTAL_WHTAX,@NETPAID,@BEFORVATAMOUNT,@TOTAL_AMOUNT,@IS_INVOICECORRECT,@INVOICE_VERIFICATION_REMARK,
+        //                                                @CREATEBY,GETDATE(),@STATUS)";
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DOCUMENTNO));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTDATE", obj.DOCUMENTDATE));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICENO", obj.INVOICENO));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICEDATE", obj.INVOICEDATE));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VENDORCODE));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TAXID", obj.TAXID));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@PAYMENT_TERMS", obj.PAYMENT_TERMS));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DUEDATE", (object)obj.DUEDATE ?? DBNull.Value));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CURRENCY", obj.CURRENCY));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@AMTB", obj.AMTB));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@VAT", obj.VAT));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTALVAT", obj.TOTALVAT));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@WHTAX", obj.RATE));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTAL_WHTAX", obj.WHTAX));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@NETPAID", obj.NETPAID));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@BEFORVATAMOUNT", obj.BEFORVATAMOUNT));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTAL_AMOUNT", obj.TOTAL_AMOUNT));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@IS_INVOICECORRECT", obj.IS_INVOICECORRECT));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICE_VERIFICATION_REMARK", obj.INVOICE_VERIFICATION_REMARK));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CREATEBY", obj.CREATEBY));
+        //    CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@STATUS", obj.STATUS));
+
+        ////    oConSCM.Query(CreateBillingNoteDetail);
+        //    /****** END DETAIL ******/
+
+
+        //    /// ******SEND EMAIL 
+        //    #region
+
+        //  //  List<MEmail> rMailTo = SendToReqIssued(obj.DocNo);
+
+        //    string mMsgBody = "";
+        //    try
+        //    {
+        //        mMsgBody = System.IO.File.ReadAllText("EmailPatternVendorReject.html");
+        //    }
+        //    catch (FileNotFoundException e)
+        //    {
+        //        Console.WriteLine(e.ToString());
+        //    }
+
+        //    //foreach (MEmail oMail in rMailTo)
+        //    //{
+        //        MailMessage mail = new MailMessage();
+        //        SmtpClient SmtpServer = new SmtpClient("smtp.dci.daikin.co.jp");
+        //        SmtpServer.Port = 25;
+        //        SmtpServer.UseDefaultCredentials = false;
+        //        mail.Priority = MailPriority.High;
+        //        mail.Headers.Add("X-Message-Flag", "No Date");
+        //        mail.From = new MailAddress("dci-noreply@dci.daikin.co.jp", "E-BILLING SYSTEM");
+        //        mail.Subject = "Vendor Reject Invoices";
+        //        mail.IsBodyHtml = true;
+
+        //      //  mail.To.Add(oMail.Email);
+        //          mail.To.Add("pannita.i@dci.daikin.co.jp");
+
+        //        mail.Body = String.Format(mMsgBody, obj.INVOICENO, "Pannita.i", obj.INVOICE_VERIFICATION_REMARK);
+
+        //        try
+        //        {
+        //            SmtpServer.Send(mail);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            //Console.WriteLine($"ส่งเมลไม่สำเร็จ: {oMail.Email} - {ex.Message}");
+        //        }
+        //   // }
+
+        //    #endregion
+        //    /// ******END SEND EMAIL
+
+
+        //    return Ok();
+        //}
+
+
+        [HttpPost]
+        [Route("PostInvoiceincorrect")]
+        public IActionResult PostInvoiceincorrect([FromBody] List<CreateBillingNote> invoices)
+        {
+            if (invoices == null || invoices.Count == 0)
+                return BadRequest("No invoice data");
+
+            // ====== INSERT HEAD/DETAIL LOOP ======
+            foreach (var obj in invoices)
+            {
+                /****** HEAD ******/
+                SqlCommand CreateBillingNoteHead = new SqlCommand();
+                CreateBillingNoteHead.CommandText = @"INSERT INTO [EBILLING_HEADER] ([DOCUMENTNO]
+                                                  ,[DOCUMENTDATE]
+                                                  ,[PAYMENT_TERMS]
+                                                  ,[DUEDATE]
+                                                  ,[ACTYPE]
+                                                  ,[VENDORCODE]
+                                                  ,[INVOICENO]
+                                                  ,[INVOICEDATE]
+                                                  ,[TAXID]
+                                                  ,[BILLERBY]
+                                                  ,[BILLERDATE]
+                                                  ,[CREATEBY]
+                                                  ,[CREATEDATE]
+                                                  ,[STATUS])
+                                              VALUES (@DOCUMENTNO,@DOCUMENTDATE,@PAYMENT_TERMS,@DUEDATE,@ACTYPE
+                                                    ,@VENDORCODE,@INVOICENO,@INVOICEDATE,@TAXID,@BILLERBY,GETDATE(),@CREATEBY,GETDATE(),@STATUS)";
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DOCUMENTNO));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DOCUMENTDATE", (object)obj.DOCUMENTDATE ?? DBNull.Value));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@PAYMENT_TERMS", obj.PAYMENT_TERMS));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@DUEDATE", (object)obj.DUEDATE ?? DBNull.Value));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VENDORCODE));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@INVOICENO", obj.INVOICENO));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@INVOICEDATE", (object)obj.INVOICEDATE ?? DBNull.Value));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@TAXID", obj.TAXID));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@BILLERBY", obj.BILLERBY));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@CREATEBY", obj.CREATEBY));
+                CreateBillingNoteHead.Parameters.Add(new SqlParameter("@STATUS", obj.STATUS));
+
+                // oConSCM.Query(CreateBillingNoteHead);
+                /****** END HEAD ******/
+
+
+                /****** DETAIL ******/
+                SqlCommand CreateBillingNoteDetail = new SqlCommand();
+                CreateBillingNoteDetail.CommandText = @"INSERT INTO [EBILLING_DETAIL] ([DOCUMENTNO]
+                                                                            ,[DOCUMENTDATE]
+                                                                            ,[INVOICENO]
+                                                                            ,[INVOICEDATE]
+                                                                            ,[VENDORCODE]
+                                                                            ,[TAXID]
+                                                                            ,[PAYMENT_TERMS]
+                                                                            ,[DUEDATE]
+                                                                            ,[ACTYPE]
+                                                                            ,[CURRENCY]
+                                                                            ,[AMTB]
+                                                                            ,[VAT]
+                                                                            ,[TOTALVAT]
+                                                                            ,[WHTAX]
+                                                                            ,[TOTAL_WHTAX]
+                                                                            ,[NETPAID]
+                                                                            ,[BEFORVATAMOUNT]
+                                                                            ,[TOTAL_AMOUNT]
+                                                                           ,[IS_INVOICECORRECT]
+                                                                           ,[INVOICE_VERIFICATION_REMARK]
+                                                                            ,[CREATEBY]
+                                                                            ,[CREATEDATE]
+                                                                            ,[STATUS])
+                                                        VALUES (@DOCUMENTNO,@DOCUMENTDATE,@INVOICENO,
+                                                        @INVOICEDATE,@VENDORCODE,@TAXID,@PAYMENT_TERMS,
+                                                        @DUEDATE,@ACTYPE,@CURRENCY,@AMTB,@VAT,@TOTALVAT,@WHTAX,
+                                                        @TOTAL_WHTAX,@NETPAID,@BEFORVATAMOUNT,@TOTAL_AMOUNT,@IS_INVOICECORRECT,@INVOICE_VERIFICATION_REMARK,
+                                                        @CREATEBY,GETDATE(),@STATUS)";
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DOCUMENTNO));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DOCUMENTDATE", obj.DOCUMENTDATE));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICENO", obj.INVOICENO));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICEDATE", obj.INVOICEDATE));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VENDORCODE));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TAXID", obj.TAXID));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@PAYMENT_TERMS", obj.PAYMENT_TERMS));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@DUEDATE", (object)obj.DUEDATE ?? DBNull.Value));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CURRENCY", obj.CURRENCY));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@AMTB", obj.AMTB));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@VAT", obj.VAT));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTALVAT", obj.TOTALVAT));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@WHTAX", obj.RATE));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTAL_WHTAX", obj.WHTAX));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@NETPAID", obj.NETPAID));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@BEFORVATAMOUNT", obj.BEFORVATAMOUNT));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@TOTAL_AMOUNT", obj.TOTAL_AMOUNT));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@IS_INVOICECORRECT", obj.IS_INVOICECORRECT));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@INVOICE_VERIFICATION_REMARK", obj.INVOICE_VERIFICATION_REMARK));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@CREATEBY", obj.CREATEBY));
+                CreateBillingNoteDetail.Parameters.Add(new SqlParameter("@STATUS", obj.STATUS));
+
+                //  oConSCM.Query(CreateBillingNoteDetail);
+                /****** END DETAIL ******/
+            }
+
+            // ====== SEND EMAIL รอบเดียว ======
+            string mMsgBody = "";
+            try
+            {
+                mMsgBody = System.IO.File.ReadAllText("EmailPatternVendorReject.html");
+            }
+            catch (FileNotFoundException e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+
+            // รวม invoice no ทั้งหมด
+            var invoiceListText = string.Join("<br/>", invoices.Select(x => x.INVOICENO));
+
+            // รวม remark (ถ้ามีหลายอัน)
+            //var remarkText = string.Join("<br/>", invoices.Select(x =>$"{x.INVOICENO} : {x.INVOICE_VERIFICATION_REMARK}"));
+            var remarkText = string.Join("<br/>", invoices.Select(x => $"{x.INVOICE_VERIFICATION_REMARK}"));
+
+            MailMessage mail = new MailMessage();
+            SmtpClient smtp = new SmtpClient("smtp.dci.daikin.co.jp");
+            smtp.Port = 25;
+            smtp.UseDefaultCredentials = false;
+
+            mail.Priority = MailPriority.High;
+            mail.Headers.Add("X-Message-Flag", "No Date");
+            mail.From = new MailAddress("dci-noreply@dci.daikin.co.jp", "E-BILLING SYSTEM");
+            mail.Subject = "Vendor Reject Invoices";
+            mail.IsBodyHtml = true;
+
+            // mail.To.Add(oMail.Email);  // ใส่ผู้รับ 1 ครั้ง
+            mail.To.Add("pannita.i@dci.daikin.co.jp"); 
+
+            // ส่ง invoice หลายรายการในเมลเดียว
+            mail.Body = String.Format(mMsgBody,invoiceListText, "Pannita.i", remarkText);
+
+            try
+            {
+                smtp.Send(mail);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            return Ok();
+        }
+
+
+
 
 
         [HttpPost]
@@ -583,6 +889,148 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
 
 
+        //[HttpPost]
+        //[Route("PostConfirmACHeader")]
+        //public IActionResult PostConfirmACHeader([FromBody] MParammeter obj)
+        //{
+        //    List<ReportHeader> Data_list = new List<ReportHeader>();
+        //    string strVendorCode = "";
+
+
+
+
+        //    string conditionInvDate = "";
+        //    if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
+        //    {
+        //        conditionInvDate = $" AND INVOICEDATE >= '{obj.InvoiceDateFrom}' AND INVOICEDATE <= '{obj.InvoiceDateTo}' ";
+        //    }
+
+        //    SqlCommand cmdHead = new SqlCommand();
+        //    cmdHead.CommandText = $@"WITH RankedInvoices AS (
+        //                                        SELECT *,
+        //                                                ROW_NUMBER() OVER(PARTITION BY VENDORCODE ORDER BY DOCUMENTDATE DESC) AS rn
+        //                                        FROM [dbSCM].[dbo].[EBILLING_HEADER]
+        //                                        WHERE STATUS LIKE @STATUS  AND VENDORCODE LIKE  @VENDORCODE AND ACTYPE LIKE @ACTYPE {conditionInvDate} 
+        //                                    )
+        //                                    SELECT 
+        //                                        DOCUMENTNO,
+        //                                        FORMAT(DOCUMENTDATE,'dd/MM/yyyy') AS DOCUMENTDATE,
+        //                                        PAYMENT_TERMS,
+        //                                        FORMAT(DUEDATE,'dd/MM/yyyy') AS DUEDATE,
+        //                                        VENDORCODE,
+        //                                        INVOICENO,
+        //                                        FORMAT(INVOICEDATE,'dd/MM/yyyy') AS INVOICEDATE,
+        //                                        TAXID,
+        //                                        ACTYPE,
+        //                                        BILLERBY,
+        //                                        FORMAT(BILLERDATE,'dd/MM/yyyy') AS BILLERDATE,
+        //                                        RECEIVED_BILLERBY,
+        //                                        FORMAT(RECEIVED_BILLERDATE,'dd/MM/yyyy') AS RECEIVED_BILLERDATE,
+        //                                        REJECT_BY,
+        //                                        FORMAT(REJECT_DATE,'dd/MM/yyyy') AS REJECT_DATE,
+        //                                        CREATEBY,
+        //                                        FORMAT(CREATEDATE,'dd/MM/yyyy') AS CREATEDATE,
+        //                                        UPDATEBY,
+        //                                        FORMAT(UPDATEDATE,'dd/MM/yyyy') AS UPDATEDATE,
+        //                                        STATUS
+        //                                    FROM RankedInvoices
+        //                                   -- WHERE rn = 1";
+        //    cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", obj.VenderCode));
+        //    cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
+        //    cmdHead.Parameters.Add(new SqlParameter("@ACTYPE", obj.ACTYPE));
+        //    DataTable dtHead = oConSCM.Query(cmdHead);
+        //    if (dtHead.Rows.Count > 0)
+        //    {
+        //        foreach (DataRow drow in dtHead.Rows)
+        //        {
+        //            ReportHeader MData = new ReportHeader();
+        //            MData.DOCUMENTNO = drow["DOCUMENTNO"].ToString();
+        //            MData.DUEDATE = drow["DUEDATE"].ToString();
+        //            MData.TAXID = drow["TAXID"].ToString();
+        //            MData.PAYMENT_TERMS = drow["PAYMENT_TERMS"].ToString();
+        //            MData.VENDORCODE = drow["VENDORCODE"].ToString();
+        //            MData.DATE = drow["CREATEDATE"].ToString();
+        //            MData.BILLERBY = drow["BILLERBY"].ToString();
+        //            MData.BILLERDATE = drow["BILLERDATE"].ToString();
+        //            MData.RECEIVED_BILLERBY = drow["RECEIVED_BILLERBY"].ToString();
+        //            MData.RECEIVED_BILLERDATE = drow["RECEIVED_BILLERDATE"].ToString();
+        //            MData.REJECT_BY = drow["REJECT_BY"].ToString();
+        //            MData.REJECT_DATE = drow["REJECT_DATE"].ToString();
+        //            MData.STATUS = drow["STATUS"].ToString();
+        //            MData.INVOICENO = drow["INVOICENO"].ToString();
+        //            MData.INVOICEDATE = drow["INVOICEDATE"].ToString();
+        //            MData.ACTYPE = drow["ACTYPE"].ToString();
+
+        //            string documentNo = MData.DOCUMENTNO;
+        //            string vendorCode = MData.VENDORCODE;
+        //            string status = MData.STATUS;
+        //            string ivno = MData.INVOICENO;
+
+
+        //            OracleCommand cmdVDNAME = new OracleCommand();
+        //            cmdVDNAME.CommandText = @"SELECT *
+        //                                        FROM DST_ACMVD1
+        //                                        WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
+        //            cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
+        //            DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
+        //            if (dtVDNAME.Rows.Count > 0)
+        //            {
+        //                MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
+        //                MData.ADDRES1 = dtVDNAME.Rows[0]["ADDR1"].ToString();
+        //                MData.ADDRES2 = dtVDNAME.Rows[0]["ADDR2"].ToString();
+        //                MData.ZIPCODE = dtVDNAME.Rows[0]["ZIPCODE"].ToString();
+        //                MData.TELNO = dtVDNAME.Rows[0]["TELNO"].ToString();
+        //                MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
+        //            }
+
+
+
+        //            SqlCommand cmdTotal = new SqlCommand();
+        //            cmdTotal.CommandText = @"SELECT VENDORCODE,
+        //                                        SUM(TOTAL_AMOUNT) AS TOTAL_AMOUNT,
+        //                                        SUM(TOTAL_WHTAX) AS TOTAL_WHTAX,
+        //                                        SUM(TOTAL_AMOUNT) - SUM(TOTAL_WHTAX) AS NETPAID
+        //                                        FROM dbSCM.dbo.EBILLING_DETAIL
+        //                                        WHERE [STATUS] LIKE @STATUS AND [VENDORCODE] = @VENDORCODE 
+        //                                        GROUP BY VENDORCODE";
+        //            cmdTotal.Parameters.Add(new SqlParameter("@VENDORCODE", vendorCode));
+        //            cmdTotal.Parameters.Add(new SqlParameter("@STATUS", status));
+        //            DataTable dtTOTAL = oConSCM.Query(cmdTotal);
+        //            if (dtTOTAL.Rows.Count > 0)
+        //            {
+        //                DataRow t = dtTOTAL.Rows[0];
+
+        //                MData.TOTAL_AMOUNT = Convert.ToDecimal(t["TOTAL_AMOUNT"]);
+        //                MData.WHTAX = Convert.ToDecimal(t["TOTAL_WHTAX"]);
+        //                MData.NETPAID = Convert.ToDecimal(t["NETPAID"]);
+        //            }
+
+
+        //            SqlCommand cmdFile = new SqlCommand();
+        //            cmdFile.CommandText = @"SELECT [DOCUMENTNO]
+        //                                        ,[FILE_NAME]
+        //                                        ,[FILE_PATH]
+        //                                        ,[CREATE_BY]
+        //                                        ,[CREATE_DATE]
+        //                                        FROM [dbSCM].[dbo].[EBILLING_ATTACH_FILE]
+        //                                        WHERE DOCUMENTNO = @DOCUMENTNO";
+        //            cmdFile.Parameters.Add(new SqlParameter("@DOCUMENTNO", documentNo));
+        //            DataTable dtFile = oConSCM.Query(cmdFile);
+        //            if (dtFile.Rows.Count > 0)
+        //            {
+        //                DataRow t = dtFile.Rows[0];
+
+        //                MData.FILE_NAME = t["FILE_NAME"].ToString();
+        //            }
+
+        //            Data_list.Add(MData);
+        //        }
+        //    }
+
+        //    return Ok(Data_list);
+        //}
+
+
         [HttpPost]
         [Route("PostConfirmACHeader")]
         public IActionResult PostConfirmACHeader([FromBody] MParammeter obj)
@@ -677,16 +1125,6 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
                         MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
                     }
 
-                    //OracleCommand selectACType = new OracleCommand();
-                    //selectACType.CommandText = @"SELECT IVNO,ACTYPE
-                    //                            FROM MC.DST_ACDAP1 D
-                    //                            where IVNO = :IVNO";
-                    //selectACType.Parameters.Add(new OracleParameter(":IVNO", ivno));
-                    //DataTable dtACType = oOraAL02.Query(selectACType);
-                    //if (dtACType.Rows.Count > 0)
-                    //{
-                    //    MData.ACTYPE = dtACType.Rows[0]["ACTYPE"].ToString();
-                    //}
 
 
                     SqlCommand cmdTotal = new SqlCommand();
@@ -733,6 +1171,7 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             return Ok(Data_list);
         }
+
 
 
 
@@ -796,178 +1235,6 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
-        [HttpPost]
-        [Route("PostConfirmBilling")]
-        public IActionResult PostConfirmBilling([FromBody] MReceiveBuilling obj)
-        {
-            if (obj.InvoiceNos == null || obj.InvoiceNos.Count == 0)
-                return BadRequest("Invoice list is empty");
-
-            // 🔹 สร้าง parameter list สำหรับ IN (...)
-            var parameters = obj.InvoiceNos.Select((x, i) => $"@inv{i}").ToList();
-            string inClause = string.Join(",", parameters);
-
-            // ===== SELECT DETAIL =====
-            SqlCommand selectDoc = new SqlCommand();
-            selectDoc.CommandText = $@"SELECT *
-                                FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                WHERE INVOICENO IN ({inClause}) AND STATUS = 'WAITING'";
-            for (int i = 0; i < obj.InvoiceNos.Count; i++)
-            {
-                selectDoc.Parameters.AddWithValue(parameters[i], obj.InvoiceNos[i]);
-            }
-
-            DataTable dtDoc = oConSCM.Query(selectDoc);
-
-            if (dtDoc.Rows.Count > 0)
-            {
-                // ===== UPDATE HEADER =====
-                SqlCommand updateHeader = new SqlCommand();
-                updateHeader.CommandText = @"UPDATE [EBILLING_HEADER]
-                                     SET RECEIVED_BILLERBY = @RECEIVEDBY,
-                                         RECEIVED_BILLERDATE = GETDATE(),
-                                         [STATUS] = 'CONFIRM'
-                                     WHERE DOCUMENTNO = @DOCUMENTNO";
-                updateHeader.Parameters.AddWithValue("@DOCUMENTNO", obj.DocumentNo);
-                updateHeader.Parameters.AddWithValue("@RECEIVEDBY", obj.IssuedBy);
-                oConSCM.Query(updateHeader);
-
-                // ===== UPDATE DETAIL พร้อม REMARK =====
-                for (int i = 0; i < obj.InvoiceNos.Count; i++)
-                {
-                    string invoiceNo = obj.InvoiceNos[i];
-                    string remark = obj.Remarks != null && obj.Remarks.Count > i ? obj.Remarks[i] : "";
-
-                    SqlCommand updateDetail = new SqlCommand();
-                    updateDetail.CommandText = @"UPDATE [EBILLING_DETAIL]
-                                         SET [STATUS] = 'CONFIRM',
-                                             [REMARK] = @remark
-                                         WHERE INVOICENO = @invoiceNo";
-                    updateDetail.Parameters.AddWithValue("@invoiceNo", invoiceNo);
-                    updateDetail.Parameters.AddWithValue("@remark", remark);
-                    oConSCM.Query(updateDetail);
-                }
-            }
-
-            return Ok();
-        }
-
-
-
-        [HttpPost]
-        [Route("PostRejectbilling")]
-        public IActionResult PostRejectbilling([FromBody] MReceiveBuilling obj)
-        {
-            if (obj.InvoiceNos == null || obj.InvoiceNos.Count == 0)
-                return BadRequest("Invoice list is empty");
-
-            // 🔹 สร้าง parameter list สำหรับ IN (...)
-            var parameters = obj.InvoiceNos.Select((x, i) => $"@inv{i}").ToList();
-            string inClause = string.Join(",", parameters);
-
-            // ===== SELECT DETAIL =====
-            SqlCommand selectDoc = new SqlCommand();
-            selectDoc.CommandText = $@"SELECT *
-                                FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                WHERE INVOICENO IN ({inClause}) AND STATUS IN ('WAITING','CONFIRM','CANCEL')";
-            for (int i = 0; i < obj.InvoiceNos.Count; i++)
-            {
-                selectDoc.Parameters.AddWithValue(parameters[i], obj.InvoiceNos[i]);
-            }
-
-            DataTable dtDoc = oConSCM.Query(selectDoc);
-
-            if (dtDoc.Rows.Count > 0)
-            {
-                // ===== UPDATE HEADER =====
-                SqlCommand updateHeader = new SqlCommand();
-                updateHeader.CommandText = @"UPDATE [EBILLING_HEADER]
-                                     SET REJECT_BY = @RECEIVEDBY,
-                                         REJECT_DATE = GETDATE(),
-                                         [STATUS] = 'REJECT'
-                                     WHERE DOCUMENTNO = @DOCUMENTNO";
-                updateHeader.Parameters.AddWithValue("@DOCUMENTNO", obj.DocumentNo);
-                updateHeader.Parameters.AddWithValue("@RECEIVEDBY", obj.IssuedBy);
-                oConSCM.Query(updateHeader);
-
-                // ===== UPDATE DETAIL พร้อม REMARK =====
-                for (int i = 0; i < obj.InvoiceNos.Count; i++)
-                {
-                    string invoiceNo = obj.InvoiceNos[i];
-                    string remark = obj.Remarks != null && obj.Remarks.Count > i ? obj.Remarks[i] : "";
-
-                    SqlCommand updateDetail = new SqlCommand();
-                    updateDetail.CommandText = @"UPDATE [EBILLING_DETAIL]
-                                         SET [STATUS] = 'REJECT',
-                                             [REMARK] = @remark
-                                         WHERE INVOICENO = @invoiceNo";
-                    updateDetail.Parameters.AddWithValue("@invoiceNo", invoiceNo);
-                    updateDetail.Parameters.AddWithValue("@remark", remark);
-                    oConSCM.Query(updateDetail);
-                }
-            }
-
-            return Ok();
-        }
-
-
-
-        [HttpPost]
-        [Route("PostCancelConfirmBilling")]
-        public IActionResult PostCancelConfirmBilling([FromBody] MReceiveBuilling obj)
-        {
-            if (obj.InvoiceNos == null || obj.InvoiceNos.Count == 0)
-                return BadRequest("Invoice list is empty");
-
-            // 🔹 สร้าง parameter list สำหรับ IN (...)
-            var parameters = obj.InvoiceNos.Select((x, i) => $"@inv{i}").ToList();
-            string inClause = string.Join(",", parameters);
-
-            // ===== SELECT DETAIL =====
-            SqlCommand selectDoc = new SqlCommand();
-            selectDoc.CommandText = $@"SELECT *
-                                FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                WHERE INVOICENO IN ({inClause}) AND STATUS = 'CONFIRM'";
-            for (int i = 0; i < obj.InvoiceNos.Count; i++)
-            {
-                selectDoc.Parameters.AddWithValue(parameters[i], obj.InvoiceNos[i]);
-            }
-
-            DataTable dtDoc = oConSCM.Query(selectDoc);
-
-            if (dtDoc.Rows.Count > 0)
-            {
-                // ===== UPDATE HEADER =====
-                SqlCommand updateHeader = new SqlCommand();
-                updateHeader.CommandText = @"UPDATE [EBILLING_HEADER]
-                                     SET CANCEL_BY = @RECEIVEDBY,
-                                         CANCEL_DATE = GETDATE(),
-                                         [STATUS] = 'CANCEL'
-                                     WHERE DOCUMENTNO = @DOCUMENTNO";
-                updateHeader.Parameters.AddWithValue("@DOCUMENTNO", obj.DocumentNo);
-                updateHeader.Parameters.AddWithValue("@RECEIVEDBY", obj.IssuedBy);
-                oConSCM.Query(updateHeader);
-
-                // ===== UPDATE DETAIL พร้อม REMARK =====
-                for (int i = 0; i < obj.InvoiceNos.Count; i++)
-                {
-                    string invoiceNo = obj.InvoiceNos[i];
-                    string remark = obj.Remarks != null && obj.Remarks.Count > i ? obj.Remarks[i] : "";
-
-                    SqlCommand updateDetail = new SqlCommand();
-                    updateDetail.CommandText = @"UPDATE [EBILLING_DETAIL]
-                                         SET [STATUS] = 'CANCEL',
-                                             [REMARK] = @remark
-                                         WHERE INVOICENO = @invoiceNo";
-                    updateDetail.Parameters.AddWithValue("@invoiceNo", invoiceNo);
-                    updateDetail.Parameters.AddWithValue("@remark", remark);
-                    oConSCM.Query(updateDetail);
-                }
-            }
-
-            return Ok();
-        }
-
 
 
         [HttpPost]
@@ -1027,119 +1294,6 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
-
-
-        [HttpPost]
-        [Route("PostReportACHeader")]
-        public IActionResult PostReportACPerVendor([FromBody] MParammeter obj)
-        {
-            List<ReportHeader> Data_list = new List<ReportHeader>();
-
-
-            string conditionInvDate = "";
-            if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
-            {
-                conditionInvDate = $" AND INVOICEDATE >= '{obj.InvoiceDateFrom}' AND INVOICEDATE <= '{obj.InvoiceDateTo}' ";
-            }
-
-            SqlCommand cmdHead = new SqlCommand();
-            cmdHead.CommandText = $@"WITH RankedInvoices AS (
-                                            SELECT *,
-                                                   ROW_NUMBER() OVER(PARTITION BY VENDORCODE ORDER BY DOCUMENTDATE DESC) AS rn
-                                            FROM [dbSCM].[dbo].[EBILLING_HEADER]
-                                            WHERE STATUS <> 'WAITING' AND STATUS LIKE @STATUS  {conditionInvDate}
-                                        )
-                                        SELECT 
-                                            DOCUMENTNO,
-                                            FORMAT(DOCUMENTDATE,'dd/MM/yyyy') AS DOCUMENTDATE,
-                                            PAYMENT_TERMS,
-                                            FORMAT(DUEDATE,'dd/MM/yyyy') AS DUEDATE,
-                                            VENDORCODE,
-                                            FORMAT(INVOICEDATE,'dd/MM/yyyy') AS INVOICEDATE,
-                                            TAXID,
-                                            BILLERBY,
-                                            FORMAT(BILLERDATE,'dd/MM/yyyy') AS BILLERDATE,
-                                            RECEIVED_BILLERBY,
-                                            FORMAT(RECEIVED_BILLERDATE,'dd/MM/yyyy') AS RECEIVED_BILLERDATE,
-                                            [PAYBY],
-                                            FORMAT([PAYDATE],'dd/MM/yyyy') AS [PAYDATE],
-                                            CREATEBY,
-                                            FORMAT(CREATEDATE,'dd/MM/yyyy') AS CREATEDATE,
-                                            UPDATEBY,
-                                            FORMAT(UPDATEDATE,'dd/MM/yyyy') AS UPDATEDATE,
-                                            STATUS
-                                        FROM RankedInvoices
-                                        WHERE rn = 1";
-            cmdHead.Parameters.Add(new SqlParameter("@STATUS", obj.status));
-            DataTable dtHead = oConSCM.Query(cmdHead);
-            if (dtHead.Rows.Count > 0)
-            {
-                foreach (DataRow drow in dtHead.Rows)
-                {
-                    ReportHeader MData = new ReportHeader();
-                    MData.DOCUMENTNO = drow["DOCUMENTNO"].ToString();
-                    MData.DUEDATE = drow["DUEDATE"].ToString();
-                    MData.TAXID = drow["TAXID"].ToString();
-                    MData.PAYMENT_TERMS = drow["PAYMENT_TERMS"].ToString();
-                    MData.VENDORCODE = drow["VENDORCODE"].ToString();
-                    MData.DATE = drow["CREATEDATE"].ToString();
-                    MData.BILLERBY = drow["BILLERBY"].ToString();
-                    MData.BILLERDATE = drow["BILLERDATE"].ToString();
-                    MData.RECEIVED_BILLERBY = drow["RECEIVED_BILLERBY"].ToString();
-                    MData.RECEIVED_BILLERDATE = drow["RECEIVED_BILLERDATE"].ToString();
-                    MData.PAYMENT_BY = drow["PAYBY"].ToString();
-                    MData.PAYMENT_DATE = drow["PAYDATE"].ToString();
-                    MData.STATUS = drow["STATUS"].ToString();
-
-                    string vendorCode = MData.VENDORCODE;
-                    string status = MData.STATUS;
-
-
-                    OracleCommand cmdVDNAME = new OracleCommand();
-                    cmdVDNAME.CommandText = @"SELECT *
-                                                FROM DST_ACMVD1
-                                                WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
-                    cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
-                    DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
-                    if (dtVDNAME.Rows.Count > 0)
-                    {
-                        MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
-                        MData.ADDRES1 = dtVDNAME.Rows[0]["ADDR1"].ToString();
-                        MData.ADDRES2 = dtVDNAME.Rows[0]["ADDR2"].ToString();
-                        MData.ZIPCODE = dtVDNAME.Rows[0]["ZIPCODE"].ToString();
-                        MData.TELNO = dtVDNAME.Rows[0]["TELNO"].ToString();
-                        MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
-                    }
-
-
-                    SqlCommand cmdTotal = new SqlCommand();
-                    cmdTotal.CommandText = @"SELECT VENDORCODE,
-                                                SUM(TOTALVAT) AS TOTALVAT,
-                                                SUM(TOTAL_AMOUNT) AS TOTAL_AMOUNT,
-                                                SUM(TOTAL_WHTAX) AS TOTAL_WHTAX,
-                                                SUM(TOTAL_AMOUNT) - SUM(TOTAL_WHTAX) AS NETPAID
-                                                FROM dbSCM.dbo.EBILLING_DETAIL
-                                                WHERE [STATUS] LIKE @STATUS AND [VENDORCODE] = @VENDORCODE 
-                                                GROUP BY VENDORCODE";
-                    cmdTotal.Parameters.Add(new SqlParameter("@VENDORCODE", vendorCode));
-                    cmdTotal.Parameters.Add(new SqlParameter("@STATUS", status));
-                    DataTable dtTOTAL = oConSCM.Query(cmdTotal);
-                    if (dtTOTAL.Rows.Count > 0)
-                    {
-                        DataRow t = dtTOTAL.Rows[0];
-
-                        MData.TOTALVAT = Convert.ToDecimal(t["TOTALVAT"]);
-                        MData.TOTAL_AMOUNT = Convert.ToDecimal(t["TOTAL_AMOUNT"]);
-                        MData.WHTAX = Convert.ToDecimal(t["TOTAL_WHTAX"]);
-                        MData.NETPAID = Convert.ToDecimal(t["NETPAID"]);
-                    }
-
-                    Data_list.Add(MData);
-                }
-            }
-
-            return Ok(Data_list);
-        }
 
 
 
@@ -1202,280 +1356,5 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
             return Ok(Data_list);
         }
 
-
-
-        [HttpPost]
-        [Route("PostConfirmACDetail")]
-        public IActionResult PostConfirmACDetail([FromBody] MParammeter obj)
-        {
-            List<ReportDetail> Data_list = new List<ReportDetail>();
-
-
-            SqlCommand cmdDetail = new SqlCommand();
-            cmdDetail.CommandText = $@"SELECT [DOCUMENTNO]
-                                    ,FORMAT([DOCUMENTDATE],'dd/MM/yyyy') AS DOCUMENTDATE
-                                    ,[INVOICENO]
-                                    ,FORMAT([INVOICEDATE],'dd/MM/yyyy') AS INVOICEDATE
-                                    ,[VENDORCODE]
-                                    ,[TAXID]
-                                    ,[PAYMENT_TERMS]
-                                    ,FORMAT([DUEDATE],'dd/MM/yyyy') AS DUEDATE
-                                    ,[ACTYPE]
-                                    ,[CURRENCY]
-                                    ,[AMTB]
-                                    ,[VAT]
-                                    ,[TOTALVAT]
-                                    ,[WHTAX]
-                                    ,[TOTAL_WHTAX]
-                                    ,[NETPAID]
-                                    ,[BEFORVATAMOUNT]
-                                    ,[TOTAL_AMOUNT]
-                                    ,[CREATEBY]
-                                    ,[CREATEDATE]
-                                    ,[UPDATEBY]
-                                    ,[UPDATEDATE]
-                                    ,[STATUS]
-                                    ,[REMARK]
-                                    FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                    WHERE DOCUMENTNO = @DOCUMENTNO";
-            cmdDetail.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DocumentNo));
-            DataTable dtDetail = oConSCM.Query(cmdDetail);
-            if (dtDetail.Rows.Count > 0)
-            {
-                foreach (DataRow drow in dtDetail.Rows)
-                {
-                    ReportDetail MData = new ReportDetail();
-                    MData.DOCUMENTNO = drow["DOCUMENTNO"].ToString();
-                    MData.DOCUMENTDATE = drow["DOCUMENTDATE"].ToString();
-                    MData.INVOICENO = drow["INVOICENO"].ToString();
-                    MData.VENDORCODE = drow["VENDORCODE"].ToString();
-                    MData.INVOICEDATE = drow["INVOICEDATE"].ToString();
-                    MData.PAYMENT_TERMS = drow["PAYMENT_TERMS"].ToString();
-                    MData.DUEDATE = drow["DUEDATE"].ToString();
-                    MData.CURRENCY = drow["CURRENCY"].ToString();
-                    MData.AMTB = Convert.ToDecimal(drow["AMTB"].ToString());
-                    MData.VAT = Convert.ToDecimal(drow["VAT"].ToString());
-                    MData.TOTALVAT = Convert.ToDecimal(drow["TOTALVAT"].ToString());
-                    MData.RATE = drow["WHTAX"].ToString();
-                    MData.WHTAX = Convert.ToDecimal(drow["TOTAL_WHTAX"].ToString());
-                    MData.TOTALAMOUNT = Convert.ToDecimal(drow["TOTAL_AMOUNT"].ToString());
-                    MData.STATUS = drow["STATUS"].ToString();
-                    MData.REMARK = drow["REMARK"].ToString();
-
-                    string vendorCode = drow["VENDORCODE"].ToString();
-
-
-                    SqlCommand cmdHead = new SqlCommand();
-                    cmdHead.CommandText = $@"SELECT [DOCUMENTNO]
-                                                    ,[RECEIVED_BILLERBY]
-                                                    ,FORMAT([RECEIVED_BILLERDATE],'dd/MM/yyyy') AS RECEIVED_BILLERDATE
-                                                    ,[CREATEBY]
-                                                    ,FORMAT([CREATEDATE],'dd/MM/yyyy') AS CREATEDATE
-                                                    FROM [dbSCM].[dbo].[EBILLING_HEADER]
-                                                    WHERE DOCUMENTNO = @DOCUMENTNO";
-                    cmdHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", obj.DocumentNo));
-                    DataTable dtHead = oConSCM.Query(cmdHead);
-                    if (dtHead.Rows.Count > 0)
-                    {
-                        foreach (DataRow item in dtHead.Rows)
-                        {
-                            MData.RECEIVED_BILLERBY = item["RECEIVED_BILLERBY"].ToString();
-                            MData.RECEIVED_BILLERDATE = item["RECEIVED_BILLERDATE"].ToString();
-                            MData.CREATEBY = item["CREATEBY"].ToString();
-                            MData.CREATEDATE = item["CREATEDATE"].ToString();
-                        }
-                    }
-
-                    OracleCommand cmdVDNAME = new OracleCommand();
-                    cmdVDNAME.CommandText = @"SELECT *
-                                                FROM DST_ACMVD1
-                                                WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
-                    cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode));
-                    DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
-                    if (dtVDNAME.Rows.Count > 0)
-                    {
-                        MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
-                        MData.ADDR1 = dtVDNAME.Rows[0]["ADDR1"].ToString();
-                        MData.ADDR2 = dtVDNAME.Rows[0]["ADDR2"].ToString();
-                        MData.ZIPCODE = dtVDNAME.Rows[0]["ZIPCODE"].ToString();
-                        MData.TELNO = dtVDNAME.Rows[0]["TELNO"].ToString();
-                        MData.FAXNO = dtVDNAME.Rows[0]["FAXNO"].ToString();
-                    }
-
-
-                    Data_list.Add(MData);
-                }
-            }
-
-            return Ok(Data_list);
-        }
-
-
-        [HttpPost]
-        [Route("PostReportInvoiceByAC")]
-        public IActionResult PostReportInvoiceByAC([FromBody] MParammeter obj)
-        {
-            List<ReportInvoiceByAC> Data_list = new List<ReportInvoiceByAC>();
-
-            string invoiceNos = string.IsNullOrEmpty(obj.InvoiceNo) ? "%" : obj.InvoiceNo.Trim();
-            string conditionInvDate = "";
-            if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
-            {
-                conditionInvDate = " AND D.IVDATE BETWEEN :InvDateFrom AND :InvDateTo ";
-            }
-
-            #region ===== Oracle : Invoice Master =====
-
-            OracleCommand sqlSelect = new OracleCommand();
-            sqlSelect.CommandText = $@"SELECT DISTINCT 
-                                        D.VENDER,
-                                        D.IVNO,
-                                        CASE
-                                            WHEN REGEXP_LIKE(TRIM(D.IVDATE), '^[0-9]{{8}}$')
-                                            THEN TO_CHAR(TO_DATE(D.IVDATE, 'YYYYMMDD'), 'DD/MM/YYYY')
-                                            ELSE NULL
-                                        END AS IVDATE,
-                                        D.VDNAME,
-                                        D.CURR,
-                                        D.AMTB,
-                                        D.VATIN,
-                                        V.PAYTRM,
-                                        V.TAXID,
-                                        D.ACTYPE
-                                    FROM MC.DST_ACDAP1 D
-                                    LEFT JOIN DST_ACMVD1 V ON V.VENDER = D.VENDER
-                                    WHERE V.PAYTRM IS NOT NULL
-                                      AND TRIM(D.VENDER) LIKE :VENDER
-                                      AND D.APBIT = 'F'
-                                      AND D.PAYBIT IN ('U','F')
-                                      AND TRIM(D.ACTYPE) LIKE '{obj.ACTYPE}'
-                                      AND TRIM(D.IVNO) LIKE :IVNO
-                                      {conditionInvDate}";
-
-            sqlSelect.Parameters.Add(new OracleParameter(":VENDER", obj.VenderCode));
-            sqlSelect.Parameters.Add(new OracleParameter(":IVNO", invoiceNos));
-            //  sqlSelect.Parameters.Add(new OracleParameter(":ACTYPE", obj.ACTYPE + "%"));
-
-            if (!string.IsNullOrEmpty(obj.InvoiceDateFrom) && !string.IsNullOrEmpty(obj.InvoiceDateTo))
-            {
-                sqlSelect.Parameters.Add(new OracleParameter(":InvDateFrom", obj.InvoiceDateFrom));
-                sqlSelect.Parameters.Add(new OracleParameter(":InvDateTo", obj.InvoiceDateTo));
-            }
-
-            DataTable dtOracle = oOraAL02.Query(sqlSelect);
-
-            #endregion
-
-            #region ===== Loop Oracle → Check EBILLING_DETAIL =====
-
-            foreach (DataRow orow in dtOracle.Rows)
-            {
-                ReportInvoiceByAC MData = new ReportInvoiceByAC();
-
-                string invoiceNo = orow["IVNO"].ToString();
-                string vendorCode = orow["VENDER"].ToString();
-
-                // ---------- Oracle ----------
-                MData.INVOICENO = invoiceNo;
-                MData.INVOICEDATE = orow["IVDATE"].ToString();
-                MData.PAYMENT_TERMS = orow["PAYTRM"].ToString();
-                MData.CURRENCY = orow["CURR"].ToString();
-                MData.AMTB = Convert.ToDecimal(orow["AMTB"]);
-                MData.TOTALVAT = Convert.ToDecimal(orow["VATIN"]);
-                MData.STATUS = "NEW";
-                MData.ACTYPE = orow["ACTYPE"].ToString();
-
-                // ---------- SQL Server : EBILLING_DETAIL ----------
-                SqlCommand cmdHead = new SqlCommand();
-                cmdHead.CommandText = @"SELECT *
-                                        FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                        WHERE VENDORCODE = @VENDORCODE
-                                          AND INVOICENO = @INVOICENO";
-                cmdHead.Parameters.Add(new SqlParameter("@VENDORCODE", vendorCode));
-                cmdHead.Parameters.Add(new SqlParameter("@INVOICENO", invoiceNo));
-
-                DataTable dtHead = oConSCM.Query(cmdHead);
-
-                if (dtHead.Rows.Count > 0)
-                {
-                    DataRow drow = dtHead.Rows[0];
-
-                    MData.DUEDATE = drow["DUEDATE"] == DBNull.Value ? "" : Convert.ToDateTime(drow["DUEDATE"]).ToString("dd/MM/yyyy");
-                    MData.WHTAX = drow["WHTAX"].ToString();
-                    MData.TOTAL_WHTAX = drow["TOTAL_WHTAX"] == DBNull.Value ? 0 : Convert.ToDecimal(drow["TOTAL_WHTAX"]);
-                    MData.TOTAL_AMOUNT = drow["TOTAL_AMOUNT"] == DBNull.Value ? 0 : Convert.ToDecimal(drow["TOTAL_AMOUNT"]);
-                    MData.STATUS = drow["STATUS"].ToString();
-                }
-                else
-                {
-                    // ---------- Default when not exist ----------
-                    MData.DUEDATE = "";
-                    MData.WHTAX = "0";
-                    MData.TOTAL_WHTAX = 0;
-                    MData.TOTAL_AMOUNT = 0;
-                }
-
-                // ---------- Vendor Name ----------
-                OracleCommand cmdVDNAME = new OracleCommand();
-                cmdVDNAME.CommandText = @"SELECT VENDER,VDNAME
-                                                FROM DST_ACMVD1
-                                                WHERE KAISEQ = '999' AND TRIM(VENDER) = :VENDER";
-
-                cmdVDNAME.Parameters.Add(new OracleParameter(":VENDER", vendorCode.Trim()));
-                DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
-
-                if (dtVDNAME.Rows.Count > 0)
-                {
-                    MData.VENDORCODE = dtVDNAME.Rows[0]["VENDER"].ToString();
-                    MData.VENDORNAME = dtVDNAME.Rows[0]["VDNAME"].ToString();
-                }
-
-                Data_list.Add(MData);
-            }
-
-            #endregion
-
-            return Ok(Data_list);
-        }
-
-
-
-        [HttpPost]
-        [Route("PostPayment")]
-        public IActionResult PostPayment([FromBody] MPayment obj)
-        {
-
-            SqlCommand selectDoc = new SqlCommand();
-            selectDoc.CommandText = $@"SELECT *
-                                            FROM [dbSCM].[dbo].[EBILLING_DETAIL]
-                                            WHERE VENDORCODE LIKE {obj.VendorCode}";
-            DataTable dtDoc = oConSCM.Query(selectDoc);
-            if (dtDoc.Rows.Count > 0)
-            {
-                foreach (DataRow item in dtDoc.Rows)
-                {
-                    string docNo = item["DOCUMENTNO"].ToString();
-
-
-                    SqlCommand updateStatusHead = new SqlCommand();
-                    updateStatusHead.CommandText = $@"UPDATE [EBILLING_HEADER]
-                                                SET PAYBY = @PAYBY , PAYDATE = GETDATE() , [STATUS] = 'PAYMENT'
-                                                WHERE DOCUMENTNO = @DOCUMENTNO";
-                    updateStatusHead.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
-                    updateStatusHead.Parameters.Add(new SqlParameter("@PAYBY", obj.PayBy));
-                    oConSCM.Query(updateStatusHead);
-
-
-                    SqlCommand updateStatusDeatil = new SqlCommand();
-                    updateStatusDeatil.CommandText = $@"UPDATE [EBILLING_DETAIL]
-                                                          SET [STATUS] = 'PAYMENT'
-                                                          WHERE [INVOICENO] IN {obj.InvoiceNo} AND DOCUMENTNO = @DOCUMENTNO";
-                    updateStatusDeatil.Parameters.Add(new SqlParameter("@DOCUMENTNO", docNo));
-                    oConSCM.Query(updateStatusDeatil);
-                }
-            }
-
-            return Ok();
-        }
     }
 }
