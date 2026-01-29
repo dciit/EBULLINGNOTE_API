@@ -115,7 +115,7 @@ namespace INVOICEBILLINENOTE_API.Controllers
                 else
                 {
                     // ---------- Default when not exist ----------
-                    MData.DUEDATE = "";
+                    MData.DUEDATE = "-";
                     MData.WHTAX = "0";
                     MData.TOTAL_WHTAX = 0;
                     MData.TOTAL_AMOUNT = 0;

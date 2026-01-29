@@ -45,6 +45,42 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
         }
 
 
+
+
+        [HttpGet("getVendor")]
+        [AllowAnonymous]
+        public ActionResult getVendor()
+        {
+            List<DataVender> data_List = new List<DataVender>();
+
+            OracleCommand cmdVDNAME = new OracleCommand();
+            cmdVDNAME.CommandText = @"SELECT *
+                                                FROM DST_ACMVD1
+                                                WHERE KAISEQ = '999'";
+            DataTable dtVDNAME = oOraAL02.Query(cmdVDNAME);
+            if (dtVDNAME.Rows.Count > 0)
+            {
+                foreach (DataRow item in dtVDNAME.Rows)
+                {
+                    DataVender model = new DataVender();
+                    model.VENDER = item["VENDER"].ToString();
+                    model.VDNAME = item["VENDER"].ToString() + " : " + item["VDNAME"].ToString();
+                    model.ADDR1 = item["ADDR1"].ToString();
+                    model.ADDR2 = item["ADDR2"].ToString();
+                    model.ZIPCODE = item["ZIPCODE"].ToString();
+                    model.TELNO = item["TELNO"].ToString();
+                    model.FAXNO = item["FAXNO"].ToString();
+
+                    data_List.Add(model);
+                }
+            }
+
+            return Ok(data_List);
+        }
+
+
+
+
         [HttpGet("getINVCHECK")]
         [AllowAnonymous]
         public ActionResult getINVCHECK()
@@ -78,6 +114,8 @@ namespace INVOICE_BILLINGNOTE_API.Controllers
 
             return Ok(data_List);
         }
+
+
 
 
 
