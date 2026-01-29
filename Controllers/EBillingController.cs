@@ -202,6 +202,8 @@ namespace INVOICEBILLINENOTE_API.Controllers
 
                         upeventCmd.Parameters.AddWithValue("@CLDCODE", cldcode);
                         upeventCmd.Parameters.AddWithValue("@EVENT_TYPE", mParam.CldType);
+                        upeventCmd.Parameters.AddWithValue("@START_DATE", mParam.DateStart);
+                        upeventCmd.Parameters.AddWithValue("@END_DATE", mParam.DateEnd);
 
                         dbSCM.ExecuteCommand(upeventCmd);
 
@@ -668,19 +670,6 @@ namespace INVOICEBILLINENOTE_API.Controllers
             }
 
             DataRow rowLog = logData.Rows[0];
-
-            // ===================== GET AUTHEN =====================
-            SqlCommand authenCmd = new SqlCommand(@"
-                SELECT *
-                FROM [dbSCM].[dbo].[EBILLING_AUTHEN]
-                WHERE USERNAME = @USERNAME");
-            authenCmd.Parameters.AddWithValue("@USERNAME", mParam.Username);
-
-            DataTable authenData = dbSCM.Query(authenCmd);
-            if (authenData.Rows.Count == 0)
-            {
-                return Ok(new { result = -3, message = "ไม่พบข้อมูล Authen" });
-            }
 
             // ===================== UPDATE LOG STATE =====================
             SqlCommand updateStateCmd = new SqlCommand(@"
