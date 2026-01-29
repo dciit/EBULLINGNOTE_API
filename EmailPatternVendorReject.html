@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>E-Billing: Vendor Rejected Invoice</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+
+    <p>Dear {1},</p>
+
+    <p><b>Notification: Vendor Rejected Invoice (E-Billing)</b></p>
+
+    <p>
+        The vendor has rejected the invoice in the E-Billing system.<br />
+        Please review the details below:
+    </p>
+
+    <table style="border-collapse: collapse; width: 100%; max-width: 700px; margin-top: 10px; border: 1px solid #ddd;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    Invoice No
+                </th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    Reject Reason / Remark
+                </th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 5px; text-align: left;">
+                    {0}
+                </td>
+                <td style="border: 1px solid #ddd; padding: 5px; text-align: left;">
+                    {2}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    <br />
+
+    <p>Best Regards,</p>
+
+    <p><span style="font-size: 11px; color: gray;">This is an automated email. Please do not reply.</span></p>
+
+</body>
+
+</html>

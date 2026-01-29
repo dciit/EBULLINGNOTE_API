@@ -365,16 +365,15 @@ namespace INVOICE_VENDER_API.Controllers
                 SELECT 
                     auth.USERNAME,
                     auth.PASSWORD,
+                    auth.[VDCODE],
                     auth.PERSON_INCHARGE,
-                    vnd.VenderName,
+                    auth.COMPANY_NAME,
                     dict.DICTREFNO
                 FROM [dbSCM].[dbo].[EBILLING_AUTHEN] auth
                 LEFT JOIN [dbSCM].[dbo].[EBILLING_DICT] dict
                     ON auth.USERNAME = dict.DICTKEYNO
-                LEFT JOIN [dbSCM].[dbo].[AL_Vendor] vnd
-                    ON auth.USERNAME = vnd.Vender
                 WHERE auth.USERNAME = @Username
-                  AND dict.DICTTYPE = 'PV_MSTUSR';");
+                  AND dict.DICTTYPE = 'PV_MSTUSR'");
 
             infoCmd.Parameters.AddWithValue("@Username", mParam.Username);
             //infoCmd.Parameters.AddWithValue("@Password", mParam.Password);
@@ -408,8 +407,9 @@ namespace INVOICE_VENDER_API.Controllers
                 isMatch = isMatch.ToString(),
                 username = user["USERNAME"].ToString(),
                 incharge = user["PERSON_INCHARGE"].ToString(),
-                vendername = user["VenderName"].ToString(),
-                role = user["DICTREFNO"].ToString()
+                vendername = user["COMPANY_NAME"].ToString(),
+                role = user["DICTREFNO"].ToString(),
+                venderCode = user["VDCODE"].ToString()
             });
         }
 
